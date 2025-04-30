@@ -1,0 +1,15 @@
+[versions]
+kotlin="2.1.20"
+
+yaml = "2.4"
+gson = "2.13.0"
+
+[plugins]
+kotlin={ id="org.jetbrains.kotlin.jvm", version.ref="kotlin" }
+
+[libraries]
+yaml={ module="org.yaml:snakeyaml", version.ref="yaml" }
+gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+
+[bundles]
+yacla = ["yaml", "gson"]
