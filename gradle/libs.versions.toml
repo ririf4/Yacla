@@ -1,15 +1,17 @@
 [versions]
 kotlin="2.1.20"
 
-yaml = "2.4"
+
+yaml = "2.9"
 gson = "2.13.0"
+slf4j-api = "2.1.0-alpha1"
 
 [plugins]
 kotlin={ id="org.jetbrains.kotlin.jvm", version.ref="kotlin" }
 
 [libraries]
-yaml={ module="org.yaml:snakeyaml", version.ref="yaml" }
+yaml={ module="org.snakeyaml:snakeyaml-engine", version.ref="yaml" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j-api" }
 
-[bundles]
-yacla = ["yaml", "gson"]
+kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }

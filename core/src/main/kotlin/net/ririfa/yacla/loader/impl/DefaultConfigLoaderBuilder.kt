@@ -11,6 +11,17 @@ import java.nio.file.Path
 import java.util.Objects
 import kotlin.io.path.notExists
 
+/**
+ * Default implementation of [ConfigLoaderBuilder].
+ *
+ * This builder creates a [ConfigLoader] for the given configuration class,
+ * allowing fluent configuration of the input resource, target file,
+ * parser, logger, and update behavior.
+ *
+ * Typically used internally via [net.ririfa.yacla.Yacla.loader], rather than instantiated directly.
+ *
+ * @param T the type of the configuration object
+ */
 class DefaultConfigLoaderBuilder<T : Any>(
     private val clazz: Class<T>
 ) : ConfigLoaderBuilder<T> {
@@ -61,7 +72,13 @@ class DefaultConfigLoaderBuilder<T : Any>(
             clazz = clazz,
             parser = parser!!,
             file = targetFile!!,
-            logger = logger
-        )
+            logger = logger,
+            resourcePath = resourcePath!!,
+        ).also { loader ->
+            if (autoUpdate) {
+                loader.updateConfig()
+                loader.reload()
+            }
+        }
     }
 }

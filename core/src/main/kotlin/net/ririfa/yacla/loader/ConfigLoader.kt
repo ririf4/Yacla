@@ -1,36 +1,72 @@
 package net.ririfa.yacla.loader
 
 /**
- * Interface representing a loaded configuration instance.
+ * Represents a loaded configuration file mapped to a Kotlin or Java object.
  *
- * Provides access to the loaded configuration object and actions to reload,
- * validate, or update it if outdated.
+ * Provides access to the deserialized configuration object and lifecycle operations
+ * such as reloading, validation, filling default values, and updating the file
+ * from the default resource if outdated.
+ *
+ * This interface is typically obtained by calling [ConfigLoaderBuilder.load].
+ *
+ * Example usage:
+ * ```
+ * val loader = Yacla.loader<MyConfig>()
+ *     .fromResource("/defaults/config.yml")
+ *     .toFile(Paths.get("config.yml"))
+ *     .parser(SnakeYamlParser())
+ *     .withLogger(ConsoleLogger())
+ *     .autoUpdateIfOutdated(true)
+ *     .load()
+ *
+ * loader.validate()
+ * loader.nullCheck()
+ * val config = loader.config
+ * ```
+ *
+ * @param T the type of the configuration object
  */
 interface ConfigLoader<T : Any> {
-
     /**
      * The loaded configuration object.
      */
     val config: T
 
     /**
-     * Reloads the configuration from the backing file.
+     * Reloads the configuration object from the backing file.
+     *
+     * This discards the current in-memory config object and replaces it
+     * with a fresh parse of the file.
      */
     fun reload()
 
     /**
-     * Validates the configuration object using annotations (e.g., @Required).
+     * Validates the configuration object based on field annotations such as [net.ririfa.yacla.annotation.Required]
+     * and [net.ririfa.yacla.annotation.Range].
+     *
+     * Throws an exception if validation fails.
      */
     fun validate()
 
-
     /**
-     * Fills in null or blank values with appropriate defaults (if applicable).
+     * Fills in null or blank fields with default values if applicable.
+     *
+     * Default values are resolved from the [net.ririfa.yacla.annotation.Default] annotation
+     * or type-based defaults registered in [net.ririfa.yacla.defaults.DefaultHandlers].
      */
     fun nullCheck()
 
     /**
-     * Updates the configuration file from the resource if it is outdated.
+     * Attempts to update the configuration file by merging the default resource
+     * with the current file, preserving user-defined values.
+     *
+     * Uses an [UpdateStrategy] registered for the parser type to perform the update.
+     *
+     * This method is automatically called during [ConfigLoaderBuilder.load] if
+     * [ConfigLoaderBuilder.autoUpdateIfOutdated] was enabled.
+     *
+     * It can also be called manually to trigger an update check at any time.
      */
-    fun updateIfNeeded()
+    fun updateConfig()
+
 }

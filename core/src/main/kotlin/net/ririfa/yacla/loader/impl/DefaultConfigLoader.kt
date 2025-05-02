@@ -5,17 +5,39 @@ import net.ririfa.yacla.annotation.Range
 import net.ririfa.yacla.annotation.Required
 import net.ririfa.yacla.defaults.DefaultHandlers
 import net.ririfa.yacla.loader.ConfigLoader
+import net.ririfa.yacla.loader.UpdateStrategyRegistry
+import net.ririfa.yacla.loader.util.UpdateContext
 import net.ririfa.yacla.logger.YaclaLogger
 import net.ririfa.yacla.parser.ConfigParser
 import java.lang.reflect.Modifier
 import java.nio.file.Files
 import java.nio.file.Path
 
+/**
+ * Default implementation of [ConfigLoader] that loads, validates, and updates a configuration object
+ * from a file using a [ConfigParser].
+ *
+ * This loader handles the following:
+ * - Loading the configuration object from a file
+ * - Performing null/default value injection for missing fields
+ * - Validating fields based on annotations such as [Required], [Range], and [Default]
+ * - Automatically applying update strategies registered for the parser type
+ *
+ * Typically created via a [net.ririfa.yacla.loader.ConfigLoaderBuilder], not instantiated directly.
+ *
+ * @param T the type of the configuration object
+ * @param clazz the target configuration class
+ * @param parser the parser to deserialize the configuration
+ * @param file the path to the configuration file
+ * @param logger optional logger for diagnostics
+ * @param resourcePath the path to the resource used for updating configs
+ */
 class DefaultConfigLoader<T : Any>(
     private val clazz: Class<T>,
     private val parser: ConfigParser,
     private val file: Path,
-    private val logger: YaclaLogger?
+    private val logger: YaclaLogger?,
+    private val resourcePath: String
 ) : ConfigLoader<T> {
 
     override var config: T = loadFromFile()
@@ -38,13 +60,14 @@ class DefaultConfigLoader<T : Any>(
 
             val required = field.getAnnotation(Required::class.java)
             if (required != null) {
+                val named = required.named
                 val isEmptyString = value is String && value.isBlank()
                 if (value == null || isEmptyString) {
                     if (required.soft) {
-                        logger?.warn("Soft required field '$fieldName' is not set.")
+                        logger?.warn("Soft required field '$named' is not set.")
                     } else {
-                        logger?.error("Required field '$fieldName' is missing or blank!")
-                        throw IllegalStateException("Missing required config field: $fieldName")
+                        logger?.error("Required field '$named' is missing or blank!")
+                        throw IllegalStateException("Missing required config field: $named")
                     }
                 }
             }
@@ -115,8 +138,16 @@ class DefaultConfigLoader<T : Any>(
         }
     }
 
-    override fun updateIfNeeded() {
-        throw IllegalStateException("Config auto-update is not supported by DefaultConfigLoader. Use a format-specific loader if needed.")
+    override fun updateConfig() {
+        val strategy = UpdateStrategyRegistry.strategyFor(parser)
+        if (strategy != null) {
+            val ctx = UpdateContext(parser, file, resourcePath, logger)
+            if (!strategy.updateIfNeeded(ctx)) {
+                logger?.info("Config already up-to-date.")
+            }
+        } else {
+            logger?.warn("No UpdateStrategy registered for ${parser::class.java.simpleName}")
+        }
     }
 
     private fun loadFromFile(): T {
