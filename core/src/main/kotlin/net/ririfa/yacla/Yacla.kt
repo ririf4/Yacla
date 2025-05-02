@@ -66,7 +66,7 @@ object Yacla {
      *     autoUpdateIfOutdated(true)
      *     withLogger(ConsoleLogger())
      * }.load()
-     *  //or, you can use the method chain
+     *  //or, you can use the method-chain
      *
      * val config: AppConfig = loader.config
      * ```
