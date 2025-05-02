@@ -17,6 +17,8 @@ val coreVer = "1.0.0"
 val yamlVer = "1.0.0"
 
 tasks.named<DokkaBaseTask>("dokkaGenerate") {
+    dependsOn(subprojects.mapNotNull { it.tasks.findByName("dokkaGenerate") })
+
     doLast {
         val outputDir = layout.buildDirectory.asFile.get().resolve("dokka/html")
         outputDir.mkdirs()
