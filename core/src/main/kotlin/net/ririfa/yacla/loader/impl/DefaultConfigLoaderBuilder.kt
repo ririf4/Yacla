@@ -77,7 +77,7 @@ class DefaultConfigLoaderBuilder<T : Any>(
         ).also { loader ->
             if (autoUpdate) {
                 loader.updateConfig()
-                loader.reload()
+                    .reload()
             }
         }
     }

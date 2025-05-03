@@ -43,12 +43,13 @@ class DefaultConfigLoader<T : Any>(
     override var config: T = loadFromFile()
         private set
 
-    override fun reload() {
+    override fun reload(): ConfigLoader<T> {
         logger?.info("Reloading config from $file")
         config = loadFromFile()
+        return this
     }
 
-    override fun validate() {
+    override fun validate(): ConfigLoader<T> {
         logger?.info("Validating config class: ${clazz.simpleName}")
 
         for (field in clazz.declaredFields) {
@@ -81,9 +82,10 @@ class DefaultConfigLoader<T : Any>(
                 }
             }
         }
+        return this
     }
 
-    override fun nullCheck() {
+    override fun nullCheck(): ConfigLoader<T> {
         logger?.info("Running nullCheck for ${clazz.simpleName}")
 
         for (field in clazz.declaredFields) {
@@ -111,20 +113,11 @@ class DefaultConfigLoader<T : Any>(
                     null
                 }
             } else {
-                when {
-                    fieldType == String::class.java -> ""
-                    java.lang.Boolean::class.java == fieldType || Boolean::class.java == fieldType -> false
-                    Integer::class.java == fieldType || Int::class.java == fieldType -> 0
-                    java.lang.Long::class.java == fieldType || Long::class.java == fieldType -> 0L
-                    java.lang.Double::class.java == fieldType || Double::class.java == fieldType -> 0.0
-                    java.lang.Float::class.java == fieldType || Float::class.java == fieldType -> 0f
-                    List::class.java.isAssignableFrom(fieldType) -> emptyList<Any>()
-                    Set::class.java.isAssignableFrom(fieldType) -> emptySet<Any>()
-                    else -> {
-                        logger?.warn("Field '${field.name}' is null but no default is defined for type ${fieldType.simpleName}")
-                        null
-                    }
-                }
+                // when no default value is provided, we can set it to null
+                // Because if Yacla sets the default value on its own,
+                // the developer will not be able to tell which of the values were actually missing when debugging.
+                // But if it sets it to null, a developer gets an NPE, and that is easier to understand.
+                null
             }
 
             if (defaultValue != null) {
@@ -136,9 +129,10 @@ class DefaultConfigLoader<T : Any>(
                 }
             }
         }
+        return this
     }
 
-    override fun updateConfig() {
+    override fun updateConfig(): ConfigLoader<T> {
         val strategy = UpdateStrategyRegistry.strategyFor(parser)
         if (strategy != null) {
             val ctx = UpdateContext(parser, file, resourcePath, logger)
@@ -148,6 +142,7 @@ class DefaultConfigLoader<T : Any>(
         } else {
             logger?.warn("No UpdateStrategy registered for ${parser::class.java.simpleName}")
         }
+        return this
     }
 
     private fun loadFromFile(): T {

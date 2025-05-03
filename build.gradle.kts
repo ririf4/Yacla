@@ -11,14 +11,16 @@ plugins {
     `maven-publish`
 }
 
-val coreVer = "1.0.0-SNAPSHOT"
-val yamlVer = "1.0.0-SNAPSHOT"
+val coreVer = "1.0.2"
+val yamlVer = "1.0.1"
+val jsonVer = "1.0.0"
 
 allprojects {
     group = "net.ririfa"
     version = when (name) {
         "yacla-core" -> coreVer
         "yacla-yaml" -> yamlVer
+        "yacla-json" -> jsonVer
         else -> "1.0.0"
     }
 
@@ -69,7 +71,7 @@ subprojects {
     }
 
     tasks.withType<PublishToMavenRepository>().configureEach {
-        doFirst {
+        onlyIf {
             val artifactId = project.name
             val ver = project.version.toString()
             val repoUrl = if (ver.endsWith("SNAPSHOT")) {
@@ -86,14 +88,16 @@ subprojects {
             connection.connectTimeout = 3000
             connection.readTimeout = 3000
 
-            if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+            val exists = connection.responseCode == HttpURLConnection.HTTP_OK
+            connection.disconnect()
+
+            if (exists) {
                 logger.lifecycle("Artifact already exists at $artifactUrl, skipping publish.")
-                this.enabled = false // skip task
+                false
             } else {
                 logger.lifecycle("Artifact not found at $artifactUrl, proceeding with publish.")
+                true
             }
-
-            connection.disconnect()
         }
     }
 
@@ -150,6 +154,16 @@ project(":yacla-yaml") {
     afterEvaluate {
         dependencies {
             implementation(libs.yaml)
+            compileOnly(project(":yacla-core"))
+        }
+    }
+}
+
+project(":yacla-json") {
+    afterEvaluate {
+        dependencies {
+            implementation(libs.jackson)
+            implementation(libs.jackson.kotlin)
             compileOnly(project(":yacla-core"))
         }
     }

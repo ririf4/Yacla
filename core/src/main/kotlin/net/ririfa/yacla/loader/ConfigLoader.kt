@@ -38,7 +38,7 @@ interface ConfigLoader<T : Any> {
      * This discards the current in-memory config object and replaces it
      * with a fresh parse of the file.
      */
-    fun reload()
+    fun reload(): ConfigLoader<T>
 
     /**
      * Validates the configuration object based on field annotations such as [net.ririfa.yacla.annotation.Required]
@@ -46,7 +46,7 @@ interface ConfigLoader<T : Any> {
      *
      * Throws an exception if validation fails.
      */
-    fun validate()
+    fun validate(): ConfigLoader<T>
 
     /**
      * Fills in null or blank fields with default values if applicable.
@@ -54,7 +54,7 @@ interface ConfigLoader<T : Any> {
      * Default values are resolved from the [net.ririfa.yacla.annotation.Default] annotation
      * or type-based defaults registered in [net.ririfa.yacla.defaults.DefaultHandlers].
      */
-    fun nullCheck()
+    fun nullCheck(): ConfigLoader<T>
 
     /**
      * Attempts to update the configuration file by merging the default resource
@@ -67,6 +67,5 @@ interface ConfigLoader<T : Any> {
      *
      * It can also be called manually to trigger an update check at any time.
      */
-    fun updateConfig()
-
+    fun updateConfig(): ConfigLoader<T>
 }

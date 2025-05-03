@@ -1,17 +1,18 @@
 [versions]
 kotlin="2.1.20"
 
-
 yaml = "2.9"
-gson = "2.13.0"
 slf4j-api = "2.1.0-alpha1"
+jackson = "2.19.0"
 
 [plugins]
 kotlin={ id="org.jetbrains.kotlin.jvm", version.ref="kotlin" }
 
 [libraries]
 yaml={ module="org.snakeyaml:snakeyaml-engine", version.ref="yaml" }
-gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+jackson={ module="com.fasterxml.jackson.core:jackson-databind", version.ref="jackson" }
+jackson-kotlin={ module="com.fasterxml.jackson.module:jackson-module-kotlin", version.ref="jackson" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j-api" }
+
 
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }

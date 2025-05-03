@@ -11,9 +11,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - module: core
+          - name: yacla-core
             dir: core
-          - module: yaml
+          - name: yacla-yaml
             dir: yaml
 
     steps:
@@ -30,15 +30,15 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Generate Dokka
-        run: ./gradlew :${{ matrix.module }}:dokkaHtml
+        run: ./gradlew :${{ matrix.name }}:dokkaGenerate
 
       - name: Clone docs repo
         run: git clone https://x-access-token:${{ secrets.PAT }}@github.com/ririf4/docs.git pushrepo
 
       - name: Copy docs
         run: |
-          mkdir -p pushrepo/${{ matrix.module }}
-          cp -r ${{ matrix.dir }}/build/dokka/html/* pushrepo/${{ matrix.module }}/
+          mkdir -p pushrepo/${{ matrix.name }}
+          cp -r ${{ matrix.dir }}/build/dokka/html/* pushrepo/${{ matrix.name }}/
 
       - name: Commit and push
         run: |
