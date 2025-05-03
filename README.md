@@ -74,7 +74,7 @@ Maven:
 
 <dependency>
   <groupId>net.ririfa</groupId>
-  <artifactId>yacla</artifactId>
+  <artifactId>yacla-core</artifactId>
   <version>[Version]</version>
 </dependency>
 <!-- And YAML/JSON if needed -->
