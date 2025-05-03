@@ -1,6 +1,4 @@
 import org.gradle.kotlin.dsl.withType
-import org.jetbrains.dokka.gradle.tasks.DokkaBaseTask
-import org.jetbrains.dokka.gradle.tasks.DokkaGenerateTask
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.net.HttpURLConnection
@@ -13,28 +11,8 @@ plugins {
     `maven-publish`
 }
 
-val coreVer = "1.0.0"
-val yamlVer = "1.0.0"
-
-tasks.named<DokkaBaseTask>("dokkaGenerate") {
-    dependsOn(subprojects.mapNotNull { it.tasks.findByName("dokkaGenerate") })
-
-    doLast {
-        val outputDir = layout.buildDirectory.asFile.get().resolve("dokka/html")
-        outputDir.mkdirs()
-
-        subprojects.forEach { subproject ->
-            val sourceDir = subproject.layout.buildDirectory.asFile.get().resolve("dokka/html")
-            val targetDir = outputDir.resolve(subproject.name)
-            logger.lifecycle("Copying Dokka output from $sourceDir to $targetDir")
-
-            project.copy {
-                from(sourceDir)
-                into(targetDir)
-            }
-        }
-    }
-}
+val coreVer = "1.0.0-SNAPSHOT"
+val yamlVer = "1.0.0-SNAPSHOT"
 
 allprojects {
     group = "net.ririfa"

@@ -8,9 +8,13 @@ on:
 jobs:
   publish-docs:
     runs-on: ubuntu-latest
-
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    strategy:
+      matrix:
+        include:
+          - module: core
+            dir: core
+          - module: yaml
+            dir: yaml
 
     steps:
       - name: Checkout
@@ -19,42 +23,31 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: temurin
+          java-version: 17
 
-      - name: Make Gradle Wrapper Executable
-        run: chmod +x ./gradlew
-
-      - name: Generate Dokka HTML
-        run: ./gradlew dokkaGenerate
-
-      - name: Debug output path
-        run: |
-          echo "Listing all possible Dokka output dirs..."
-          ls -la build/
-          ls -la build/dokka/
+      - name: Generate Dokka
+        run: ./gradlew :${{ matrix.module }}:dokkaHtml
 
       - name: Clone docs repo
-        run: |
-          git clone https://x-access-token:${{ secrets.PAT }}@github.com/ririf4/docs.git pushrepo
-          cd pushrepo
-          git checkout -B docs-${{ github.event.repository.name }}
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+        run: git clone https://x-access-token:${{ secrets.PAT }}@github.com/ririf4/docs.git pushrepo
 
       - name: Copy docs
         run: |
-          mkdir -p ./pushrepo/${{ github.event.repository.name }}
-          cp -r build/dokka/html/* ./pushrepo/${{ github.event.repository.name }}/
+          mkdir -p pushrepo/${{ matrix.module }}
+          cp -r ${{ matrix.dir }}/build/dokka/html/* pushrepo/${{ matrix.module }}/
 
       - name: Commit and push
         run: |
           cd pushrepo
+          git checkout -B docs-${{ matrix.name }}
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
           git add .
-          git commit -m "docs: update for ${{ github.event.repository.name }}"
-          git push -f origin docs-${{ github.event.repository.name }}
+          git commit -m "docs: update for ${{ matrix.name }}"
+          git push -f origin docs-${{ matrix.name }}
 
-      - name: Create PR using GitHub CLI
+      - name: Create PR
         env:
           GH_TOKEN: ${{ secrets.PAT }}
         run: |
@@ -62,6 +55,6 @@ jobs:
           gh pr create \
             --repo ririf4/docs \
             --base main \
-            --head docs-${{ github.event.repository.name }} \
-            --title "Update docs for ${{ github.event.repository.name }}" \
-            --body "This PR updates the Dokka docs for ${{ github.event.repository.name }}"
+            --head docs-${{ matrix.name }} \
+            --title "Update docs for ${{ matrix.name }}" \
+            --body "This PR updates the Dokka docs for ${{ matrix.name }}"

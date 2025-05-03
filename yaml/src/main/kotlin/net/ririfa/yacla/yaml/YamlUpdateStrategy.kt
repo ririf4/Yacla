@@ -2,6 +2,7 @@ package net.ririfa.yacla.yaml
 
 import net.ririfa.yacla.loader.UpdateStrategy
 import net.ririfa.yacla.loader.util.UpdateContext
+import net.ririfa.yacla.loader.util.isOlderVersion
 import org.snakeyaml.engine.v2.api.Dump
 import org.snakeyaml.engine.v2.api.DumpSettings
 import org.snakeyaml.engine.v2.api.LoadSettings
@@ -32,7 +33,7 @@ class YamlUpdateStrategy : UpdateStrategy {
 
     override fun updateIfNeeded(context: UpdateContext): Boolean {
         val logger = context.logger
-        logger?.info("Updating config: ${context.targetFile}")
+        logger?.info("Checking if config update is needed: ${context.targetFile}")
 
         val defaultInputStream = javaClass.getResourceAsStream(context.resourcePath)
             ?: throw IllegalStateException("Default config not found at ${context.resourcePath}")
@@ -42,13 +43,33 @@ class YamlUpdateStrategy : UpdateStrategy {
         val defaultNode = loadSingleNode(defaultInputStream)
         val currentNode = loadSingleNode(currentInputStream)
 
-        if (defaultNode !is MappingNode || currentNode !is MappingNode) {
-            throw IllegalStateException("Config root must be a mapping node")
+        val defaultMappingNode = defaultNode as? MappingNode
+            ?: throw IllegalStateException("The default config root must be a mapping node")
+
+        val currentMappingNode = currentNode as? MappingNode
+            ?: throw IllegalStateException("The current config root must be a mapping node")
+
+        val defaultVersion = defaultMappingNode.value
+            .find { (it.keyNode as? ScalarNode)?.value?.uppercase() == "VERSION" }
+            ?.valueNode
+            ?.let { (it as? ScalarNode)?.value }
+            ?: "1.0.0"
+
+        val currentVersion = currentMappingNode.value
+            .find { (it.keyNode as? ScalarNode)?.value?.uppercase() == "VERSION" }
+            ?.valueNode
+            ?.let { (it as? ScalarNode)?.value }
+            ?: "1.0.0"
+
+        if (!isOlderVersion(currentVersion, defaultVersion)) {
+            logger?.info("Config is up-to-date (version $currentVersion >= $defaultVersion)")
+            return false
         }
 
-        mergeMappingNode(defaultNode, currentNode)
+        logger?.info("Updating config from version $currentVersion to $defaultVersion")
 
-        val yamlString = dumper.dumpToString(defaultNode)
+        mergeMappingNode(defaultMappingNode, currentMappingNode)
+        val yamlString = dumper.dumpToString(defaultMappingNode)
         context.targetFile.toFile().writeText(yamlString)
 
         logger?.info("Config updated successfully!")
