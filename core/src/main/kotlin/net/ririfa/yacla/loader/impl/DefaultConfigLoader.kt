@@ -4,6 +4,9 @@ import net.ririfa.yacla.annotation.Default
 import net.ririfa.yacla.annotation.Range
 import net.ririfa.yacla.annotation.Required
 import net.ririfa.yacla.defaults.DefaultHandlers
+import net.ririfa.yacla.exception.NullCheckException
+import net.ririfa.yacla.exception.ValidationException
+import net.ririfa.yacla.exception.YaclaConfigException
 import net.ririfa.yacla.loader.ConfigLoader
 import net.ririfa.yacla.loader.UpdateStrategyRegistry
 import net.ririfa.yacla.loader.util.UpdateContext
@@ -12,6 +15,7 @@ import net.ririfa.yacla.parser.ConfigParser
 import java.lang.reflect.Modifier
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.io.path.extension
 
 /**
  * Default implementation of [ConfigLoader] that loads, validates, and updates a configuration object
@@ -32,12 +36,13 @@ import java.nio.file.Path
  * @param logger optional logger for diagnostics
  * @param resourcePath the path to the resource used for updating configs
  */
-class DefaultConfigLoader<T : Any>(
+class DefaultConfigLoader<T : Any> internal constructor(
     private val clazz: Class<T>,
     private val parser: ConfigParser,
     private val file: Path,
     private val logger: YaclaLogger?,
-    private val resourcePath: String
+    private val resourcePath: String,
+    private val ignoreExtensionCheck: Boolean = false
 ) : ConfigLoader<T> {
 
     override var config: T = loadFromFile()
@@ -61,14 +66,13 @@ class DefaultConfigLoader<T : Any>(
 
             val required = field.getAnnotation(Required::class.java)
             if (required != null) {
-                val named = required.named
                 val isEmptyString = value is String && value.isBlank()
                 if (value == null || isEmptyString) {
                     if (required.soft) {
-                        logger?.warn("Soft required field '$named' is not set.")
+                        logger?.warn("Soft required field '$fieldName' is not set.")
                     } else {
-                        logger?.error("Required field '$named' is missing or blank!")
-                        throw IllegalStateException("Missing required config field: $named")
+                        logger?.error("Required field '$fieldName' is missing or blank!")
+                        throw ValidationException("Missing required config field: $fieldName")
                     }
                 }
             }
@@ -78,7 +82,7 @@ class DefaultConfigLoader<T : Any>(
                 val longValue = value.toLong()
                 if (longValue < range.min || longValue > range.max) {
                     logger?.error("Field '$fieldName' is out of range (${range.min}..${range.max}): $longValue")
-                    throw IllegalArgumentException("Config field '$fieldName' out of range: $longValue")
+                    throw ValidationException("Config field '$fieldName' out of range: $longValue")
                 }
             }
         }
@@ -109,8 +113,7 @@ class DefaultConfigLoader<T : Any>(
                         null
                     }
                 } else {
-                    logger?.warn("No DefaultHandler registered for '${fieldType.simpleName}' to parse @Default on '${field.name}'")
-                    null
+                    throw NullCheckException("No DefaultHandler registered for '${fieldType.simpleName}' to parse @Default on '${field.name}'")
                 }
             } else {
                 // when no default value is provided, we can set it to null
@@ -146,8 +149,16 @@ class DefaultConfigLoader<T : Any>(
     }
 
     private fun loadFromFile(): T {
+        if (ignoreExtensionCheck) {
+            val ext = file.extension.lowercase()
+            if (ext !in parser.supportedExtensions) {
+                throw YaclaConfigException("Parser ${parser::class.simpleName} does not support extension '.$ext'")
+            }
+        }
+
         return Files.newInputStream(file).use {
             parser.parse(it, clazz)
         }
     }
+
 }

@@ -3,6 +3,7 @@ package net.ririfa.yacla.loader.impl
 import net.ririfa.yacla.defaults.DefaultHandlers
 import net.ririfa.yacla.loader.ConfigLoader
 import net.ririfa.yacla.loader.ConfigLoaderBuilder
+import net.ririfa.yacla.loader.FileConfigLoaderBuilder
 import net.ririfa.yacla.logger.YaclaLogger
 import net.ririfa.yacla.parser.ConfigParser
 import java.io.InputStream
@@ -18,18 +19,19 @@ import kotlin.io.path.notExists
  * allowing fluent configuration of the input resource, target file,
  * parser, logger, and update behavior.
  *
- * Typically used internally via [net.ririfa.yacla.Yacla.loader], rather than instantiated directly.
+ * Typically used internally via [net.ririfa.yacla.Yacla.fileLoader], rather than instantiated directly.
  *
  * @param T the type of the configuration object
  */
-class DefaultConfigLoaderBuilder<T : Any>(
+class DefaultFileConfigLoaderBuilder<T : Any> internal constructor(
     private val clazz: Class<T>
-) : ConfigLoaderBuilder<T> {
+) : FileConfigLoaderBuilder<T> {
     private var resourcePath: String? = null
     private var targetFile: Path? = null
     private var parser: ConfigParser? = null
     private var logger: YaclaLogger? = null
     private var autoUpdate = false
+    private var ignoreExtensionCheck = false
 
     init {
         DefaultHandlers.registerDefaults()
@@ -55,6 +57,10 @@ class DefaultConfigLoaderBuilder<T : Any>(
         this.autoUpdate = enabled
     }
 
+    override fun ignoreExtensionCheck(): ConfigLoaderBuilder<T> = apply {
+        this.ignoreExtensionCheck = true
+    }
+
     override fun load(): ConfigLoader<T> {
         Objects.requireNonNull(resourcePath, "Resource path is not set")
         Objects.requireNonNull(targetFile, "Target file is not set")
@@ -74,6 +80,7 @@ class DefaultConfigLoaderBuilder<T : Any>(
             file = targetFile!!,
             logger = logger,
             resourcePath = resourcePath!!,
+            ignoreExtensionCheck = ignoreExtensionCheck
         ).also { loader ->
             if (autoUpdate) {
                 loader.updateConfig()

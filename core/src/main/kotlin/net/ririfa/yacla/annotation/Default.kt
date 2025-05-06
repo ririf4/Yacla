@@ -1,5 +1,7 @@
 package net.ririfa.yacla.annotation
 
+import kotlin.reflect.KClass
+
 /**
  * Specifies a default value to be used for a field when the parsed configuration
  * does not provide a value or the value is null/empty.
@@ -12,6 +14,8 @@ package net.ririfa.yacla.annotation
  * @Default("8080")
  * int port;
  * ```
+ *
+ * ** make sure your value can be cast to the field type **
  *
  * @property value the default value as a string representation
  */

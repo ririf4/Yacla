@@ -9,22 +9,15 @@ import org.snakeyaml.engine.v2.api.LoadSettings
 import org.snakeyaml.engine.v2.composer.Composer
 import org.snakeyaml.engine.v2.nodes.MappingNode
 import org.snakeyaml.engine.v2.nodes.Node
+import org.snakeyaml.engine.v2.nodes.NodeTuple
 import org.snakeyaml.engine.v2.nodes.ScalarNode
 import org.snakeyaml.engine.v2.parser.ParserImpl
 import org.snakeyaml.engine.v2.scanner.StreamReader
 import java.io.InputStreamReader
 
 /**
- * Default [UpdateStrategy] implementation for YAML configuration files.
- *
- * This strategy updates an existing YAML configuration file by merging it
- * with the default configuration resource, preserving user-defined values
- * while adding new keys or updating missing entries.
- *
- * It uses [org.snakeyaml.engine.v2] to parse and manipulate the YAML AST,
- * allowing structural merging while keeping comments intact at the root level.
- *
- * Typically used internally by the YAML parser module.
+ * UpdateStrategy implementation for YAML that merges default config into existing config,
+ * preserving user-defined values and as many comments as possible (including nested).
  */
 class YamlUpdateStrategy : UpdateStrategy {
     private val loadSettings = LoadSettings.builder().build()
@@ -45,21 +38,11 @@ class YamlUpdateStrategy : UpdateStrategy {
 
         val defaultMappingNode = defaultNode as? MappingNode
             ?: throw IllegalStateException("The default config root must be a mapping node")
-
         val currentMappingNode = currentNode as? MappingNode
             ?: throw IllegalStateException("The current config root must be a mapping node")
 
-        val defaultVersion = defaultMappingNode.value
-            .find { (it.keyNode as? ScalarNode)?.value?.uppercase() == "VERSION" }
-            ?.valueNode
-            ?.let { (it as? ScalarNode)?.value }
-            ?: "1.0.0"
-
-        val currentVersion = currentMappingNode.value
-            .find { (it.keyNode as? ScalarNode)?.value?.uppercase() == "VERSION" }
-            ?.valueNode
-            ?.let { (it as? ScalarNode)?.value }
-            ?: "1.0.0"
+        val defaultVersion = getVersion(defaultMappingNode)
+        val currentVersion = getVersion(currentMappingNode)
 
         if (!isOlderVersion(currentVersion, defaultVersion)) {
             logger?.info("Config is up-to-date (version $currentVersion >= $defaultVersion)")
@@ -69,6 +52,7 @@ class YamlUpdateStrategy : UpdateStrategy {
         logger?.info("Updating config from version $currentVersion to $defaultVersion")
 
         mergeMappingNode(defaultMappingNode, currentMappingNode)
+
         val yamlString = dumper.dumpToString(defaultMappingNode)
         context.targetFile.toFile().writeText(yamlString)
 
@@ -77,40 +61,67 @@ class YamlUpdateStrategy : UpdateStrategy {
         return true
     }
 
-    private fun loadSingleNode(input: InputStreamReader): Node {
-        val parser = ParserImpl(loadSettings, StreamReader(loadSettings, input))
+    private fun loadSingleNode(inputStream: java.io.InputStream): Node {
+        return loadSingleNode(InputStreamReader(inputStream))
+    }
+
+    private fun loadSingleNode(inputReader: InputStreamReader): Node {
+        val parser = ParserImpl(loadSettings, StreamReader(loadSettings, inputReader))
         val composer = Composer(loadSettings, parser)
         return composer.singleNode.orElseThrow { IllegalStateException("No YAML document found") }
     }
 
-    private fun loadSingleNode(inputStream: java.io.InputStream): Node {
-        return loadSingleNode(InputStreamReader(inputStream))
+    private fun getVersion(node: MappingNode): String {
+        return node.value
+            .find { (it.keyNode as? ScalarNode)?.value?.equals("version", ignoreCase = true) == true }
+            ?.valueNode
+            ?.let { (it as? ScalarNode)?.value }
+            ?: "1.0.0"
     }
 
     private fun mergeMappingNode(baseNode: MappingNode, overrideNode: MappingNode) {
         val baseTuples = baseNode.value.toMutableList()
 
         for (overrideTuple in overrideNode.value) {
-            val overrideKey = overrideTuple.keyNode
-            val existingTuple = baseTuples.find { sameKey(it.keyNode, overrideKey) }
+            val overrideKeyNode = overrideTuple.keyNode
+            val overrideValueNode = overrideTuple.valueNode
 
-            if (existingTuple != null) {
-                if (existingTuple.valueNode is MappingNode && overrideTuple.valueNode is MappingNode) {
-                    mergeMappingNode(
-                        existingTuple.valueNode as MappingNode,
-                        overrideTuple.valueNode as MappingNode
-                    )
+            val existingTupleIndex = baseTuples.indexOfFirst { sameKey(it.keyNode, overrideKeyNode) }
+
+            if (existingTupleIndex != -1) {
+                val existingTuple = baseTuples[existingTupleIndex]
+
+                mergeComments(existingTuple.keyNode, overrideKeyNode)
+                mergeComments(existingTuple.valueNode, overrideValueNode)
+
+                if (existingTuple.valueNode is MappingNode && overrideValueNode is MappingNode) {
+                    mergeMappingNode(existingTuple.valueNode as MappingNode, overrideValueNode)
                 } else {
-                    baseTuples.remove(existingTuple)
-                    baseTuples.add(overrideTuple)
+                    mergeComments(overrideValueNode, existingTuple.valueNode)
+                    baseTuples[existingTupleIndex] = NodeTuple(existingTuple.keyNode, overrideValueNode)
                 }
             } else {
-                baseTuples.add(overrideTuple)
+                mergeComments(overrideKeyNode, overrideKeyNode)
+                mergeComments(overrideValueNode, overrideValueNode)
+                baseTuples.add(NodeTuple(overrideKeyNode, overrideValueNode))
             }
         }
 
         baseNode.value.clear()
         baseNode.value.addAll(baseTuples)
+    }
+
+    private fun mergeComments(target: Node, source: Node) {
+        target.blockComments = mergeCommentLists(target.blockComments, source.blockComments)
+        target.inLineComments = mergeCommentLists(target.inLineComments, source.inLineComments)
+        target.endComments = mergeCommentLists(target.endComments, source.endComments)
+    }
+
+    private fun mergeCommentLists(
+        existing: List<org.snakeyaml.engine.v2.comments.CommentLine>?,
+        incoming: List<org.snakeyaml.engine.v2.comments.CommentLine>?
+    ): List<org.snakeyaml.engine.v2.comments.CommentLine>? {
+        return (existing ?: emptyList()) + (incoming ?: emptyList())
     }
 
     private fun sameKey(key1: Node, key2: Node): Boolean {

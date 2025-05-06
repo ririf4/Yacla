@@ -1,7 +1,7 @@
 package net.ririfa.yacla
 
 import net.ririfa.yacla.loader.ConfigLoaderBuilder
-import net.ririfa.yacla.loader.impl.DefaultConfigLoaderBuilder
+import net.ririfa.yacla.loader.impl.DefaultFileConfigLoaderBuilder
 
 /**
  * Yacla - Yet Another Config Loading API
@@ -30,7 +30,7 @@ object Yacla {
      * @return a [ConfigLoaderBuilder] for type [T].
      */
     @JvmStatic
-    inline fun <reified T : Any> loader(): ConfigLoaderBuilder<T> = loader(T::class.java)
+    inline fun <reified T : Any> fileLoader(): ConfigLoaderBuilder<T> = fileLoader(T::class.java)
 
     /**
      * Creates a configuration loader for the specified class.
@@ -52,7 +52,7 @@ object Yacla {
      * @return a [ConfigLoaderBuilder] for type [T].
      */
     @JvmStatic
-    fun <T : Any> loader(clazz: Class<T>): ConfigLoaderBuilder<T> = DefaultConfigLoaderBuilder(clazz)
+    fun <T : Any> fileLoader(clazz: Class<T>): ConfigLoaderBuilder<T> = DefaultFileConfigLoaderBuilder(clazz)
 
     /**
      * Creates and configures a loader in a DSL-style block.
@@ -76,8 +76,8 @@ object Yacla {
      * @return the configured [ConfigLoaderBuilder].
      */
     @JvmStatic
-    fun <T : Any> loader(
+    fun <T : Any> fileLoader(
         clazz: Class<T>,
         builder: ConfigLoaderBuilder<T>.() -> Unit
-    ): ConfigLoaderBuilder<T> = DefaultConfigLoaderBuilder(clazz).apply(builder)
+    ): ConfigLoaderBuilder<T> = DefaultFileConfigLoaderBuilder(clazz).apply(builder)
 }

@@ -1,5 +1,7 @@
 package net.ririfa.yacla.defaults
 
+import java.lang.reflect.Type
+
 /**
  * Defines a handler for parsing a string value into an object of a specific type.
  *
@@ -22,5 +24,5 @@ fun interface DefaultHandler {
      * @param type the target type class
      * @return the parsed object, or null if parsing failed
      */
-    fun parse(raw: String, type: Class<*>): Any?
+    fun parse(raw: String, type: Type): Any?
 }

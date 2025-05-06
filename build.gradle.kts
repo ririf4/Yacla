@@ -11,9 +11,9 @@ plugins {
     `maven-publish`
 }
 
-val coreVer = "1.0.2"
-val yamlVer = "1.0.1"
-val jsonVer = "1.0.0"
+val coreVer = "1.0.5"
+val yamlVer = "1.0.2"
+val jsonVer = "1.0.1"
 
 allprojects {
     group = "net.ririfa"
