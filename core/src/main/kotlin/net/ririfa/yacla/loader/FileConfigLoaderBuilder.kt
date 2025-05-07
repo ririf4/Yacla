@@ -9,7 +9,7 @@ import java.nio.file.Path
  * Provides a fluent API for specifying where to load the configuration from,
  * which parser to use, and logging and auto-update behaviors.
  */
-interface FileConfigLoaderBuilder<T : Any> : ConfigLoaderBuilder<T> {
+interface FileConfigLoaderBuilder<T : Any> : ConfigLoaderBuilder<T, FileConfigLoader<T>> {
 
     /**
      * Specifies the path to the resource file bundled with the application.
@@ -17,32 +17,32 @@ interface FileConfigLoaderBuilder<T : Any> : ConfigLoaderBuilder<T> {
      *
      * @param path Classpath-relative resource path (e.g., "/config.yml").
      */
-    fun fromResource(path: String): ConfigLoaderBuilder<T>
+    fun fromResource(path: String): FileConfigLoaderBuilder<T>
 
     /**
      * Sets the file where the configuration will be loaded from or saved to.
      *
      * @param file Path to the config file.
      */
-    fun toFile(file: Path): ConfigLoaderBuilder<T>
+    fun toFile(file: Path): FileConfigLoaderBuilder<T>
 
     /**
      * Sets the parser used to read and write the config file.
      *
      * @param parser Implementation of [ConfigParser].
      */
-    fun parser(parser: ConfigParser): ConfigLoaderBuilder<T>
+    fun parser(parser: ConfigParser): FileConfigLoaderBuilder<T>
 
     /**
      * Enables or disables automatic config updates based on resource version.
      *
      * @param enabled True to enable, false to disable.
      */
-    fun autoUpdateIfOutdated(enabled: Boolean): ConfigLoaderBuilder<T>
+    fun autoUpdateIfOutdated(enabled: Boolean): FileConfigLoaderBuilder<T>
 
     /**
      * Ignores the file extension check when loading the config.
      * This is useful for custom file types or when the extension is not relevant.
      */
-    fun ignoreExtensionCheck(): ConfigLoaderBuilder<T>
+    fun ignoreExtensionCheck(): FileConfigLoaderBuilder<T>
 }

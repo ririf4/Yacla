@@ -3,6 +3,7 @@ package net.ririfa.yacla.loader.impl
 import net.ririfa.yacla.defaults.DefaultHandlers
 import net.ririfa.yacla.loader.ConfigLoader
 import net.ririfa.yacla.loader.ConfigLoaderBuilder
+import net.ririfa.yacla.loader.FileConfigLoader
 import net.ririfa.yacla.loader.FileConfigLoaderBuilder
 import net.ririfa.yacla.logger.YaclaLogger
 import net.ririfa.yacla.parser.ConfigParser
@@ -37,31 +38,31 @@ class DefaultFileConfigLoaderBuilder<T : Any> internal constructor(
         DefaultHandlers.registerDefaults()
     }
 
-    override fun fromResource(path: String): ConfigLoaderBuilder<T> = apply {
+    override fun fromResource(path: String): FileConfigLoaderBuilder<T> = apply {
         this.resourcePath = path
     }
 
-    override fun toFile(file: Path): ConfigLoaderBuilder<T> = apply {
+    override fun toFile(file: Path): FileConfigLoaderBuilder<T> = apply {
         this.targetFile = file
     }
 
-    override fun parser(parser: ConfigParser): ConfigLoaderBuilder<T> = apply {
+    override fun parser(parser: ConfigParser): FileConfigLoaderBuilder<T> = apply {
         this.parser = parser
     }
 
-    override fun withLogger(logger: YaclaLogger): ConfigLoaderBuilder<T> = apply {
-        this.logger = logger
-    }
-
-    override fun autoUpdateIfOutdated(enabled: Boolean): ConfigLoaderBuilder<T> = apply {
+    override fun autoUpdateIfOutdated(enabled: Boolean): FileConfigLoaderBuilder<T> = apply {
         this.autoUpdate = enabled
     }
 
-    override fun ignoreExtensionCheck(): ConfigLoaderBuilder<T> = apply {
+    override fun ignoreExtensionCheck(): FileConfigLoaderBuilder<T> = apply {
         this.ignoreExtensionCheck = true
     }
 
-    override fun load(): ConfigLoader<T> {
+    override fun withLogger(logger: YaclaLogger): ConfigLoaderBuilder<T, FileConfigLoader<T>> = apply {
+        this.logger = logger
+    }
+
+    override fun load(): FileConfigLoader<T> {
         Objects.requireNonNull(resourcePath, "Resource path is not set")
         Objects.requireNonNull(targetFile, "Target file is not set")
         Objects.requireNonNull(parser, "Parser is not set")
@@ -74,7 +75,7 @@ class DefaultFileConfigLoaderBuilder<T : Any> internal constructor(
             Files.copy(resourceStream, targetFile!!)
         }
 
-        return DefaultConfigLoader(
+        return DefaultFileConfigLoader(
             clazz = clazz,
             parser = parser!!,
             file = targetFile!!,

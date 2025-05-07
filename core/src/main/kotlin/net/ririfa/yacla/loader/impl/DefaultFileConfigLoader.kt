@@ -7,7 +7,7 @@ import net.ririfa.yacla.defaults.DefaultHandlers
 import net.ririfa.yacla.exception.NullCheckException
 import net.ririfa.yacla.exception.ValidationException
 import net.ririfa.yacla.exception.YaclaConfigException
-import net.ririfa.yacla.loader.ConfigLoader
+import net.ririfa.yacla.loader.FileConfigLoader
 import net.ririfa.yacla.loader.UpdateStrategyRegistry
 import net.ririfa.yacla.loader.util.UpdateContext
 import net.ririfa.yacla.logger.YaclaLogger
@@ -18,7 +18,7 @@ import java.nio.file.Path
 import kotlin.io.path.extension
 
 /**
- * Default implementation of [ConfigLoader] that loads, validates, and updates a configuration object
+ * Default implementation of [FileConfigLoader] that loads, validates, and updates a configuration object
  * from a file using a [ConfigParser].
  *
  * This loader handles the following:
@@ -36,25 +36,25 @@ import kotlin.io.path.extension
  * @param logger optional logger for diagnostics
  * @param resourcePath the path to the resource used for updating configs
  */
-class DefaultConfigLoader<T : Any> internal constructor(
+class DefaultFileConfigLoader<T : Any> internal constructor(
     private val clazz: Class<T>,
     private val parser: ConfigParser,
     private val file: Path,
     private val logger: YaclaLogger?,
     private val resourcePath: String,
     private val ignoreExtensionCheck: Boolean = false
-) : ConfigLoader<T> {
+) : FileConfigLoader<T> {
 
     override var config: T = loadFromFile()
         private set
 
-    override fun reload(): ConfigLoader<T> {
+    override fun reload(): FileConfigLoader<T> {
         logger?.info("Reloading config from $file")
         config = loadFromFile()
         return this
     }
 
-    override fun validate(): ConfigLoader<T> {
+    override fun validate(): FileConfigLoader<T> {
         logger?.info("Validating config class: ${clazz.simpleName}")
 
         for (field in clazz.declaredFields) {
@@ -89,7 +89,7 @@ class DefaultConfigLoader<T : Any> internal constructor(
         return this
     }
 
-    override fun nullCheck(): ConfigLoader<T> {
+    override fun nullCheck(): FileConfigLoader<T> {
         logger?.info("Running nullCheck for ${clazz.simpleName}")
 
         for (field in clazz.declaredFields) {
@@ -135,7 +135,7 @@ class DefaultConfigLoader<T : Any> internal constructor(
         return this
     }
 
-    override fun updateConfig(): ConfigLoader<T> {
+    override fun updateConfig(): FileConfigLoader<T> {
         val strategy = UpdateStrategyRegistry.strategyFor(parser)
         if (strategy != null) {
             val ctx = UpdateContext(parser, file, resourcePath, logger)

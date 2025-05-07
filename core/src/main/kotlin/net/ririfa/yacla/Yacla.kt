@@ -1,6 +1,10 @@
 package net.ririfa.yacla
 
 import net.ririfa.yacla.loader.ConfigLoaderBuilder
+import net.ririfa.yacla.loader.DBConfigLoaderBuilder
+import net.ririfa.yacla.loader.FileConfigLoader
+import net.ririfa.yacla.loader.FileConfigLoaderBuilder
+import net.ririfa.yacla.loader.impl.DefaultDBConfigLoaderBuilder
 import net.ririfa.yacla.loader.impl.DefaultFileConfigLoaderBuilder
 
 /**
@@ -11,73 +15,27 @@ import net.ririfa.yacla.loader.impl.DefaultFileConfigLoaderBuilder
  */
 object Yacla {
 
-    /**
-     * Creates a configuration loader for the specified type using Kotlin's reified generics.
-     *
-     * Example (Kotlin - Method Chain):
-     * ```kotlin
-     * val loader: ConfigLoader<AppConfig> = Yacla.loader<AppConfig>()
-     *     .fromResource("/defaults/config.yml")
-     *     .toFile(Paths.get("config.yml"))
-     *     .parser(SnakeYamlParser())
-     *     .autoUpdateIfOutdated(true)
-     *     .withLogger(ConsoleLogger())
-     *     .load()
-     *
-     * val config: AppConfig = loader.config
-     * ```
-     *
-     * @return a [ConfigLoaderBuilder] for type [T].
-     */
     @JvmStatic
-    inline fun <reified T : Any> fileLoader(): ConfigLoaderBuilder<T> = fileLoader(T::class.java)
+    inline fun <reified T : Any> fileLoader(): FileConfigLoaderBuilder<T> = fileLoader(T::class.java)
 
-    /**
-     * Creates a configuration loader for the specified class.
-     *
-     * Example (Java):
-     * ```java
-     * ConfigLoader<AppConfig> loader = Yacla.loader(AppConfig.class)
-     *     .fromResource("/defaults/config.yml")
-     *     .toFile(Paths.get("config.yml"))
-     *     .parser(new SnakeYamlParser())
-     *     .autoUpdateIfOutdated(true)
-     *     .withLogger(new ConsoleLogger())
-     *     .load();
-     *
-     * AppConfig config = loader.get();
-     * ```
-     *
-     * @param clazz the target class of the configuration data.
-     * @return a [ConfigLoaderBuilder] for type [T].
-     */
     @JvmStatic
-    fun <T : Any> fileLoader(clazz: Class<T>): ConfigLoaderBuilder<T> = DefaultFileConfigLoaderBuilder(clazz)
+    fun <T : Any> fileLoader(clazz: Class<T>): FileConfigLoaderBuilder<T> = DefaultFileConfigLoaderBuilder(clazz)
 
-    /**
-     * Creates and configures a loader in a DSL-style block.
-     *
-     * Example (Kotlin DSL):
-     * ```kotlin
-     * val loader = Yacla.loader<AppConfig> {
-     *     fromResource("/defaults/config.yml")
-     *     toFile(Paths.get("config.yml"))
-     *     parser(SnakeYamlParser())
-     *     autoUpdateIfOutdated(true)
-     *     withLogger(ConsoleLogger())
-     * }.load()
-     *  //or, you can use the method chain
-     *
-     * val config: AppConfig = loader.config
-     * ```
-     *
-     * @param clazz the target class of the configuration data.
-     * @param builder lambda to customize the [ConfigLoaderBuilder].
-     * @return the configured [ConfigLoaderBuilder].
-     */
     @JvmStatic
     fun <T : Any> fileLoader(
         clazz: Class<T>,
-        builder: ConfigLoaderBuilder<T>.() -> Unit
-    ): ConfigLoaderBuilder<T> = DefaultFileConfigLoaderBuilder(clazz).apply(builder)
+        builder: FileConfigLoaderBuilder<T>.() -> Unit
+    ): FileConfigLoaderBuilder<T> = DefaultFileConfigLoaderBuilder(clazz).apply(builder)
+
+    @JvmStatic
+    inline fun <reified T : Any> dbLoader(): DBConfigLoaderBuilder<T> = dbLoader(T::class.java)
+
+    @JvmStatic
+    fun <T : Any> dbLoader(clazz: Class<T>): DBConfigLoaderBuilder<T> = DefaultDBConfigLoaderBuilder(clazz)
+
+    @JvmStatic
+    fun <T : Any> dbLoader(
+        clazz: Class<T>,
+        builder: DBConfigLoaderBuilder<T>.() -> Unit
+    ): DBConfigLoaderBuilder<T> = DefaultDBConfigLoaderBuilder(clazz).apply(builder)
 }
