@@ -168,3 +168,11 @@ project(":yacla-json") {
         }
     }
 }
+
+project(":yacla-ext-db") {
+    afterEvaluate {
+        dependencies {
+            compileOnly(project(":yacla-core"))
+        }
+    }
+}
