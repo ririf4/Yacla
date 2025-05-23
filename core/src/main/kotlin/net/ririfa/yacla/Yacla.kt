@@ -1,7 +1,9 @@
 package net.ririfa.yacla
 
+import net.ririfa.yacla.loader.ConfigLoader
 import net.ririfa.yacla.loader.ConfigLoaderBuilder
 import net.ririfa.yacla.loader.impl.DefaultConfigLoaderBuilder
+import kotlin.reflect.KClass
 
 /**
  * Yacla - Yet Another Config Loading API
@@ -80,4 +82,83 @@ object Yacla {
         clazz: Class<T>,
         builder: ConfigLoaderBuilder<T>.() -> Unit
     ): ConfigLoaderBuilder<T> = DefaultConfigLoaderBuilder(clazz).apply(builder)
+
+    /**
+     * Creates a DSL scope that applies the provided default settings to all loaders defined inside.
+     *
+     * This version is Kotlin-idiomatic, allowing `loader<ConfigClass> { ... }` syntax with receiver scoping.
+     *
+     * Example (Kotlin DSL):
+     * ```kotlin
+     * val config = Yacla.withDefaults(sharedSettings) {
+     *     loader<MainConfig> {
+     *         fromResource("/defaults/main.yml")
+     *         toFile(Paths.get("config/main.yml"))
+     *     }.config
+     * }
+     * ```
+     *
+     * @param settings common loader defaults such as parser, logger, and auto-update flag
+     * @param block a lambda with [LoaderScope] receiver to define one or more loaders
+     * @return the result returned from the provided block
+     */
+    @JvmStatic
+    fun <R> withDefaults(
+        settings: LoaderSettings,
+        block: LoaderScope.() -> R
+    ): R {
+        return LoaderScopeImpl(settings).block()
+    }
+
+    /**
+     * Creates a functional scope for defining multiple loaders with common defaults, for use in Java.
+     *
+     * This method enables Java-friendly loader definition using lambdas or anonymous classes.
+     *
+     * Example (Java):
+     * ```java
+     * LoaderSettings settings = new LoaderSettings(parser, logger, true);
+     *
+     * MainConfig config = Yacla.withDefaults(settings, scope -> {
+     *     ConfigLoader<MainConfig> loader = scope.loader(MainConfig.class, b -> {
+     *         b.fromResource("/defaults/main.yml");
+     *         b.toFile(Paths.get("config/main.yml"));
+     *     });
+     *     return loader.getConfig();
+     * });
+     * ```
+     *
+     * @param settings common loader defaults such as parser, logger, and auto-update flag
+     * @param block function receiving a [JLoaderScope] for defining one or more loaders
+     * @return the result returned from the provided function
+     */
+    @JvmStatic
+    fun <R> withDefaults(
+        settings: LoaderSettings,
+        block: java.util.function.Function<JLoaderScope, R>
+    ): R {
+        return block.apply(LoaderScopeImpl(settings))
+    }
+
+    /**
+     * Creates a config loader for the specified class within a [LoaderScope], applying shared defaults.
+     *
+     * This extension is meant for use within `Yacla.withDefaults` DSL blocks.
+     *
+     * Example:
+     * ```kotlin
+     * val loader = loader<MyConfig> {
+     *     fromResource("/defaults/my.yml")
+     *     toFile(Paths.get("config/my.yml"))
+     * }
+     * ```
+     *
+     * @param block configuration lambda for customizing the [ConfigLoaderBuilder]
+     * @return the loaded [ConfigLoader] for the specified type [T]
+     */
+    inline fun <reified T : Any> LoaderScope.loader(
+        noinline block: ConfigLoaderBuilder<T>.() -> Unit
+    ): ConfigLoader<T> {
+        return loader(T::class, block)
+    }
 }

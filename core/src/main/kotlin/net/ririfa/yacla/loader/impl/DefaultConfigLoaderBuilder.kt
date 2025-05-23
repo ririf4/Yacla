@@ -1,5 +1,6 @@
 package net.ririfa.yacla.loader.impl
 
+import net.ririfa.yacla.LoaderSettings
 import net.ririfa.yacla.defaults.DefaultHandlers
 import net.ririfa.yacla.loader.ConfigLoader
 import net.ririfa.yacla.loader.ConfigLoaderBuilder
@@ -53,6 +54,16 @@ class DefaultConfigLoaderBuilder<T : Any>(
 
     override fun autoUpdateIfOutdated(enabled: Boolean): ConfigLoaderBuilder<T> = apply {
         this.autoUpdate = enabled
+    }
+
+    fun withDefaults(defaults: LoaderSettings): ConfigLoaderBuilder<T> = apply {
+        if (parser == null) {
+            parser = defaults.parser
+        }
+        if (logger == null && defaults.logger != null) {
+            logger = defaults.logger
+        }
+        autoUpdate = defaults.autoUpdate
     }
 
     override fun load(): ConfigLoader<T> {

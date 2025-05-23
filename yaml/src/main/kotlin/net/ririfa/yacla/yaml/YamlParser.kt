@@ -54,7 +54,7 @@ class YamlParser : ConfigParser {
         @Suppress("UNCHECKED_CAST")
         val map = loadedObj as? Map<String, Any>
             ?: throw YaclaConfigException("Expected Map<String, Any> from YAML, but got ${loadedObj::class.simpleName}")
-
+    
         return when {
             clazz.kotlin.primaryConstructor != null -> {
                 val ctor = clazz.kotlin.primaryConstructor!!
@@ -68,8 +68,9 @@ class YamlParser : ConfigParser {
                 val components = clazz.recordComponents
                 val ctor = clazz.declaredConstructors.first()
                 val args = components.map { comp ->
-                    val key = comp.getAnnotation(NamedRecord::class.java)?.value ?: comp.name
-                    ?: throw YaclaConfigException("Cannot resolve name for record component $comp")
+                    val key = comp.getAnnotation(NamedRecord::class.java)?.value
+                        ?: comp.name.takeIf { it.isNotEmpty() }
+                        ?: throw YaclaConfigException("Cannot resolve name for record component $comp")
                     map.entries.find { it.key.equals(key, ignoreCase = true) }?.value
                 }.toTypedArray()
                 @Suppress("UNCHECKED_CAST")

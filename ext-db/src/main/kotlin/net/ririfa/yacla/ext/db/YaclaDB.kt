@@ -2,10 +2,10 @@
 package net.ririfa.yacla.ext.db
 
 import net.ririfa.yacla.Yacla
-//import net.ririfa.yacla.loader.db.DBConfigLoader
-//import net.ririfa.yacla.loader.db.DBConfigLoaderBuilder
-//import net.ririfa.yacla.loader.impl.db.DefaultDBConfigLoaderBuilder
-
+//import net.ririfa.yacla.ext.db.loader.db.DBConfigLoader
+//import net.ririfa.yacla.ext.db.loader.db.DBConfigLoaderBuilder
+//import net.ririfa.yacla.ext.db.loader.impl.db.DefaultDBConfigLoaderBuilder
+//
 ///**
 // * Provides DB-based configuration loading for the given class.
 // *

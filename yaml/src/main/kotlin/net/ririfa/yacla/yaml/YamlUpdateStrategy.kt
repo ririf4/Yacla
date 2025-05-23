@@ -95,14 +95,16 @@ class YamlUpdateStrategy : UpdateStrategy {
             val existingTuple = baseTuples.find { sameKey(it.keyNode, overrideKey) }
 
             if (existingTuple != null) {
+                transferComments(from = existingTuple.keyNode, to = overrideKey)
+
                 if (existingTuple.valueNode is MappingNode && overrideTuple.valueNode is MappingNode) {
                     mergeMappingNode(
                         existingTuple.valueNode as MappingNode,
                         overrideTuple.valueNode as MappingNode
                     )
                 } else {
-                    baseTuples.remove(existingTuple)
-                    baseTuples.add(overrideTuple)
+                    val index = baseTuples.indexOf(existingTuple)
+                    baseTuples[index] = overrideTuple
                 }
             } else {
                 baseTuples.add(overrideTuple)
@@ -111,6 +113,12 @@ class YamlUpdateStrategy : UpdateStrategy {
 
         baseNode.value.clear()
         baseNode.value.addAll(baseTuples)
+    }
+
+    private fun transferComments(from: Node, to: Node) {
+        to.blockComments = from.blockComments
+        to.inLineComments = from.inLineComments
+        to.endComments = from.endComments
     }
 
     private fun sameKey(key1: Node, key2: Node): Boolean {
