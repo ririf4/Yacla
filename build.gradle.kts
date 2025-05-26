@@ -26,12 +26,13 @@ allprojects {
 
     repositories {
         mavenCentral()
+        maven("https://repo.ririfa.net/maven2/")
     }
 
     afterEvaluate {
         dependencies {
-            implementation(libs.slf4j.api)
-            implementation(libs.kotlin.reflect)
+            api(libs.slf4j.api)
+            api(libs.kotlin.reflect)
         }
     }
 }
@@ -153,7 +154,7 @@ subprojects {
 project(":yacla-yaml") {
     afterEvaluate {
         dependencies {
-            implementation(libs.yaml)
+            api(libs.yaml)
             compileOnly(project(":yacla-core"))
         }
     }
@@ -162,8 +163,8 @@ project(":yacla-yaml") {
 project(":yacla-json") {
     afterEvaluate {
         dependencies {
-            implementation(libs.jackson)
-            implementation(libs.jackson.kotlin)
+            api(libs.jackson)
+            api(libs.jackson.kotlin)
             compileOnly(project(":yacla-core"))
         }
     }
@@ -173,6 +174,8 @@ project(":yacla-ext-db") {
     afterEvaluate {
         dependencies {
             compileOnly(project(":yacla-core"))
+            api(libs.cask)
+            api(libs.kryo)
         }
     }
 }

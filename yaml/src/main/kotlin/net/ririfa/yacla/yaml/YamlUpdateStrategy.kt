@@ -92,16 +92,19 @@ class YamlUpdateStrategy : UpdateStrategy {
 
         for (overrideTuple in overrideNode.value) {
             val overrideKey = overrideTuple.keyNode
+            val overrideValue = overrideTuple.valueNode
+
             val existingTuple = baseTuples.find { sameKey(it.keyNode, overrideKey) }
 
             if (existingTuple != null) {
-                transferComments(from = existingTuple.keyNode, to = overrideKey)
+                val existingKey = existingTuple.keyNode
+                val existingValue = existingTuple.valueNode
 
-                if (existingTuple.valueNode is MappingNode && overrideTuple.valueNode is MappingNode) {
-                    mergeMappingNode(
-                        existingTuple.valueNode as MappingNode,
-                        overrideTuple.valueNode as MappingNode
-                    )
+                transferComments(from = existingKey, to = overrideKey)
+
+                if (existingValue is MappingNode && overrideValue is MappingNode) {
+                    transferComments(from = existingValue, to = overrideValue)
+                    mergeMappingNode(existingValue, overrideValue)
                 } else {
                     val index = baseTuples.indexOf(existingTuple)
                     baseTuples[index] = overrideTuple
