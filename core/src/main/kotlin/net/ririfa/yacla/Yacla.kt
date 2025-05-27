@@ -1,9 +1,9 @@
 package net.ririfa.yacla
 
+import net.ririfa.yacla.annotation.JLoaderScope
 import net.ririfa.yacla.loader.ConfigLoader
 import net.ririfa.yacla.loader.ConfigLoaderBuilder
 import net.ririfa.yacla.loader.impl.DefaultConfigLoaderBuilder
-import kotlin.reflect.KClass
 
 /**
  * Yacla - Yet Another Config Loading API
@@ -129,7 +129,7 @@ object Yacla {
      * ```
      *
      * @param settings common loader defaults such as parser, logger, and auto-update flag
-     * @param block function receiving a [JLoaderScope] for defining one or more loaders
+     * @param block function receiving a [net.ririfa.yacla.annotation.JLoaderScope] for defining one or more loaders
      * @return the result returned from the provided function
      */
     @JvmStatic

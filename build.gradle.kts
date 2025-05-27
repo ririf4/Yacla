@@ -11,9 +11,10 @@ plugins {
     `maven-publish`
 }
 
-val coreVer = "1.0.2"
-val yamlVer = "1.0.1"
-val jsonVer = "1.0.0"
+val coreVer = "1.1.0+beta.1"
+val yamlVer = "1.1.0+beta.1"
+val jsonVer = "1.1.0+beta.1"
+val extDbVer = "1.1.0+beta.1"
 
 allprojects {
     group = "net.ririfa"
@@ -21,6 +22,7 @@ allprojects {
         "yacla-core" -> coreVer
         "yacla-yaml" -> yamlVer
         "yacla-json" -> jsonVer
+        "yacla-ext-db" -> extDbVer
         else -> "1.0.0"
     }
 

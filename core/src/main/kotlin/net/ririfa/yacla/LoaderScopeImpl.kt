@@ -1,5 +1,6 @@
 package net.ririfa.yacla
 
+import net.ririfa.yacla.annotation.JLoaderScope
 import net.ririfa.yacla.loader.ConfigLoader
 import net.ririfa.yacla.loader.ConfigLoaderBuilder
 import net.ririfa.yacla.loader.impl.DefaultConfigLoaderBuilder

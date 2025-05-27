@@ -3,6 +3,7 @@ package net.ririfa.yacla.loader
 import net.ririfa.yacla.logger.YaclaLogger
 import net.ririfa.yacla.parser.ConfigParser
 import java.nio.file.Path
+import kotlin.reflect.KClass
 
 /**
  * Builder interface for configuring and creating a [ConfigLoader] instance.
@@ -47,6 +48,28 @@ interface ConfigLoaderBuilder<T : Any> {
      * @param enabled True to enable, false to disable.
      */
     fun autoUpdateIfOutdated(enabled: Boolean): ConfigLoaderBuilder<T>
+
+    /**
+     * Registers a context provider for the given type.
+     *
+     * This allows the loader to inject additional context objects into the config
+     * during loading, useful for dependency injection or contextual data.
+     *
+     * @param type The type of the context object.
+     * @param provider A function that provides an instance of the context object.
+     */
+    fun <CTX : Any> registerContextProvider(type: KClass<CTX>, provider: () -> CTX): ConfigLoaderBuilder<T>
+
+    /**
+     * Registers a context provider for the given type.
+     *
+     * This allows the loader to inject additional context objects into the config
+     * during loading, useful for dependency injection or contextual data.
+     *
+     * @param type The type of the context object.
+     * @param provider A function that provides an instance of the context object.
+     */
+    fun <CTX : Any> registerContextProvider(type: Class<CTX>, provider: () -> CTX): ConfigLoaderBuilder<T>
 
     /**
      * Builds and loads the config, returning a [ConfigLoader] instance.

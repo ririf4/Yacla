@@ -1,4 +1,4 @@
-package net.ririfa.yacla
+package net.ririfa.yacla.annotation
 
 import net.ririfa.yacla.loader.ConfigLoader
 import net.ririfa.yacla.loader.ConfigLoaderBuilder

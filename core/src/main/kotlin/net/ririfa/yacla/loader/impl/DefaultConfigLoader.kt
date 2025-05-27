@@ -1,10 +1,13 @@
 package net.ririfa.yacla.loader.impl
 
+import net.ririfa.yacla.annotation.CustomValidateHandler
 import net.ririfa.yacla.annotation.Default
+import net.ririfa.yacla.annotation.IfNullEvenRequired
 import net.ririfa.yacla.annotation.Range
 import net.ririfa.yacla.annotation.Required
 import net.ririfa.yacla.defaults.DefaultHandlers
 import net.ririfa.yacla.loader.ConfigLoader
+import net.ririfa.yacla.loader.ErrorHandlerWith
 import net.ririfa.yacla.loader.UpdateStrategyRegistry
 import net.ririfa.yacla.loader.util.UpdateContext
 import net.ririfa.yacla.logger.YaclaLogger
@@ -12,6 +15,7 @@ import net.ririfa.yacla.parser.ConfigParser
 import java.lang.reflect.Modifier
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.reflect.KClass
 
 /**
  * Default implementation of [ConfigLoader] that loads, validates, and updates a configuration object
@@ -37,7 +41,8 @@ class DefaultConfigLoader<T : Any>(
     private val parser: ConfigParser,
     private val file: Path,
     private val logger: YaclaLogger?,
-    private val resourcePath: String
+    private val resourcePath: String,
+    private val contextProviders: Map<KClass<*>, () -> Any>
 ) : ConfigLoader<T> {
 
     override var config: T = loadFromFile()
@@ -69,6 +74,52 @@ class DefaultConfigLoader<T : Any>(
                     } else {
                         logger?.error("Required field '$named' is missing or blank!")
                         throw IllegalStateException("Missing required config field: $named")
+                    }
+                }
+            }
+
+            val customValidator = field.getAnnotation(CustomValidateHandler::class.java)
+            if (customValidator != null) {
+                runCatching {
+                    val validator = customValidator.handler.java.getDeclaredConstructor().newInstance()
+                    validator.validate(value, config)
+                    logger?.info("CustomValidator '${validator::class.java.simpleName}' executed for field '$fieldName'")
+                }.onFailure { e ->
+                    logger?.error("Failed to execute CustomValidator for field '$fieldName'", e)
+                }
+            }
+
+            val ifNull = field.getAnnotation(IfNullEvenRequired::class.java)
+            if (ifNull != null && (value == null || (value is String && value.isBlank()))) {
+                val handlerClass = ifNull.handler.java
+                val contextClass = ifNull.context.java
+                val contextType = ifNull.contextType
+
+                val handler = try {
+                    handlerClass.getDeclaredConstructor().newInstance()
+                } catch (e: Exception) {
+                    logger?.error("Failed to instantiate handler: ${handlerClass.simpleName}", e)
+                    continue
+                }
+
+                val context = if (contextClass == Void::class.java) null else contextProviders[contextClass.kotlin]?.invoke()
+
+                when (handler) {
+                    is ErrorHandlerWith<*> -> {
+                        try {
+                            if (context != null) {
+                                @Suppress("UNCHECKED_CAST")
+                                (handler as ErrorHandlerWith<Any>).handle(value, config, context, contextType)
+                                logger?.info("Executed handler ${handlerClass.simpleName} for field '${field.name}'")
+                            } else {
+                                logger?.warn("Context is null for handler ${handlerClass.simpleName}, field '${field.name}'")
+                            }
+                        } catch (e: Exception) {
+                            logger?.error("Exception in handler '${handlerClass.simpleName}' for '${field.name}'", e)
+                        }
+                    }
+                    else -> {
+                        logger?.error("Handler '${handlerClass.simpleName}' must implement ErrorHandlerWith")
                     }
                 }
             }
