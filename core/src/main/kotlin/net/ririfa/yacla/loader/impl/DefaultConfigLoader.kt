@@ -1,5 +1,6 @@
 package net.ririfa.yacla.loader.impl
 
+import net.ririfa.yacla.annotation.CustomLoader
 import net.ririfa.yacla.annotation.CustomValidateHandler
 import net.ririfa.yacla.annotation.Default
 import net.ririfa.yacla.annotation.IfNullEvenRequired
@@ -16,6 +17,8 @@ import java.lang.reflect.Modifier
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.reflect.KClass
+import kotlin.reflect.full.findAnnotation
+import kotlin.reflect.full.primaryConstructor
 
 /**
  * Default implementation of [ConfigLoader] that loads, validates, and updates a configuration object
@@ -78,17 +81,6 @@ class DefaultConfigLoader<T : Any>(
                 }
             }
 
-            val customValidator = field.getAnnotation(CustomValidateHandler::class.java)
-            if (customValidator != null) {
-                runCatching {
-                    val validator = customValidator.handler.java.getDeclaredConstructor().newInstance()
-                    validator.validate(value, config)
-                    logger?.info("CustomValidator '${validator::class.java.simpleName}' executed for field '$fieldName'")
-                }.onFailure { e ->
-                    logger?.error("Failed to execute CustomValidator for field '$fieldName'", e)
-                }
-            }
-
             val ifNull = field.getAnnotation(IfNullEvenRequired::class.java)
             if (ifNull != null && (value == null || (value is String && value.isBlank()))) {
                 val handlerClass = ifNull.handler.java
@@ -123,6 +115,19 @@ class DefaultConfigLoader<T : Any>(
                     }
                 }
             }
+
+            val customValidator = field.getAnnotation(CustomValidateHandler::class.java)
+            if (customValidator != null) {
+                runCatching {
+                    val validator = customValidator.handler.java.getDeclaredConstructor().newInstance()
+                    validator.validate(value, config)
+                    logger?.info("CustomValidator '${validator::class.java.simpleName}' executed for field '$fieldName'")
+                }.onFailure { e ->
+                    logger?.error("Failed to execute CustomValidator for field '$fieldName'", e)
+                    throw IllegalStateException("Custom validation failed for field '$fieldName': ${e.message}", e)
+                }
+            }
+
 
             val range = field.getAnnotation(Range::class.java)
             if (range != null && value is Number) {
@@ -196,9 +201,30 @@ class DefaultConfigLoader<T : Any>(
         return this
     }
 
-    private fun loadFromFile(): T {
-        return Files.newInputStream(file).use {
-            parser.parse(it, clazz)
+    @Suppress("UNCHECKED_CAST")
+    fun <T : Any> constructConfig(clazz: Class<T>, rawMap: Map<String, Any?>): T {
+        val kClazz = clazz.kotlin
+        val ctor = kClazz.primaryConstructor
+            ?: throw IllegalArgumentException("Class ${clazz.simpleName} must have a primary constructor")
+
+        val args = ctor.parameters.associateWith { param ->
+            val name = param.name ?: return@associateWith null
+            val rawValue = rawMap.entries.find { it.key.equals(name, ignoreCase = true) }?.value
+
+            val customLoader = param.findAnnotation<CustomLoader>()
+            if (customLoader != null) {
+                val loader = customLoader.loader.java.getDeclaredConstructor().newInstance()
+                loader.load(rawValue)
+            } else {
+                rawValue
+            }
         }
+
+        return ctor.callBy(args)
+    }
+
+    private fun loadFromFile(): T {
+        val rawMap = Files.newInputStream(file).use { parser.parse(it) }
+        return constructConfig(clazz, rawMap)
     }
 }

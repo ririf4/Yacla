@@ -16,15 +16,8 @@ interface ConfigParser {
      */
     val supportedExtensions: Set<String>
 
-    /**
-     * Parses the input stream into an instance of the given class.
-     *
-     * @param input The input stream to read from.
-     * @param clazz The class of the target type.
-     * @return A deserialized config object.
-     * @throws Exception if deserialization fails.
-     */
-    fun <T : Any> parse(input: InputStream, clazz: Class<T>): T
+
+    fun parse(input: InputStream): Map<String, Any>
 
     /**
      * Writes the given config object to the output stream.

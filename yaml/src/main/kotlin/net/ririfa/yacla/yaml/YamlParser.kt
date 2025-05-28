@@ -45,42 +45,13 @@ class YamlParser : ConfigParser {
 
     override val supportedExtensions: Set<String> = setOf("yml", "yaml")
 
-    override fun <T : Any> parse(input: InputStream, clazz: Class<T>): T {
-        val bytes = input.readBytes()
-
-        val loadedObj = loader.loadFromInputStream(ByteArrayInputStream(bytes))
+    override fun parse(input: InputStream): Map<String, Any> {
+        val obj = loader.loadFromInputStream(input)
             ?: throw IllegalStateException("Parsed config is null")
 
         @Suppress("UNCHECKED_CAST")
-        val map = loadedObj as? Map<String, Any>
-            ?: throw YaclaConfigException("Expected Map<String, Any> from YAML, but got ${loadedObj::class.simpleName}")
-    
-        return when {
-            clazz.kotlin.primaryConstructor != null -> {
-                val ctor = clazz.kotlin.primaryConstructor!!
-                val args = ctor.parameters.associateWith { param ->
-                    map.entries.find { it.key.equals(param.name, ignoreCase = true) }?.value
-                }
-                ctor.callBy(args)
-            }
-
-            clazz.isRecord -> {
-                val components = clazz.recordComponents
-                val ctor = clazz.declaredConstructors.first()
-                val args = components.map { comp ->
-                    val key = comp.getAnnotation(NamedRecord::class.java)?.value
-                        ?: comp.name.takeIf { it.isNotEmpty() }
-                        ?: throw YaclaConfigException("Cannot resolve name for record component $comp")
-                    map.entries.find { it.key.equals(key, ignoreCase = true) }?.value
-                }.toTypedArray()
-                @Suppress("UNCHECKED_CAST")
-                ctor.newInstance(*args) as T
-            }
-
-            else -> {
-                throw YaclaConfigException("Class ${clazz.simpleName} does not have a primary constructor or is not a record")
-            }
-        }
+        return obj as? Map<String, Any>
+            ?: throw IllegalArgumentException("Expected YAML to produce Map<String, Any>, got ${obj::class.java}")
     }
 
     override fun <T : Any> write(output: OutputStream, config: T) {

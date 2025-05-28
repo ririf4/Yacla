@@ -11,7 +11,7 @@ plugins {
     `maven-publish`
 }
 
-val coreVer = "1.1.0+beta.1"
+val coreVer = "1.1.0+beta.3"
 val yamlVer = "1.1.0+beta.1"
 val jsonVer = "1.1.0+beta.1"
 val extDbVer = "1.1.0+beta.1"
