@@ -63,6 +63,6 @@ class DefaultDBConfigLoaderBuilder<T : Any>(
             shareGcExecutor(true)
         }
 
-        return DefaultDBConfigLoader(clazz, key, cache, access)
+        return DefaultDBConfigLoader(clazz, key, cache, access, dispatcher)
     }
 }

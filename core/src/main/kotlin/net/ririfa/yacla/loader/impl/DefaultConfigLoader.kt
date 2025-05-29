@@ -4,6 +4,7 @@ import net.ririfa.yacla.annotation.CustomLoader
 import net.ririfa.yacla.annotation.CustomValidateHandler
 import net.ririfa.yacla.annotation.Default
 import net.ririfa.yacla.annotation.IfNullEvenRequired
+import net.ririfa.yacla.annotation.NamedRecord
 import net.ririfa.yacla.annotation.Range
 import net.ririfa.yacla.annotation.Required
 import net.ririfa.yacla.defaults.DefaultHandlers
@@ -204,24 +205,37 @@ class DefaultConfigLoader<T : Any>(
     @Suppress("UNCHECKED_CAST")
     fun <T : Any> constructConfig(clazz: Class<T>, rawMap: Map<String, Any?>): T {
         val kClazz = clazz.kotlin
-        val ctor = kClazz.primaryConstructor
-            ?: throw IllegalArgumentException("Class ${clazz.simpleName} must have a primary constructor")
 
-        val args = ctor.parameters.associateWith { param ->
-            val name = param.name ?: return@associateWith null
-            val rawValue = rawMap.entries.find { it.key.equals(name, ignoreCase = true) }?.value
+        kClazz.primaryConstructor?.let { ctor ->
+            val args = ctor.parameters.associateWith { param ->
+                val name = param.name ?: return@associateWith null
+                val rawValue = rawMap.entries.find { it.key.equals(name, ignoreCase = true) }?.value
 
-            val customLoader = param.findAnnotation<CustomLoader>()
-            if (customLoader != null) {
-                val loader = customLoader.loader.java.getDeclaredConstructor().newInstance()
-                loader.load(rawValue)
-            } else {
-                rawValue
+                val customLoader = param.findAnnotation<CustomLoader>()
+                if (customLoader != null) {
+                    val loader = customLoader.loader.java.getDeclaredConstructor().newInstance()
+                    loader.load(rawValue)
+                } else {
+                    rawValue
+                }
             }
+            return ctor.callBy(args)
         }
 
-        return ctor.callBy(args)
+        if (clazz.isRecord) {
+            val components = clazz.recordComponents
+            val ctor = clazz.declaredConstructors.first()
+            val args = components.map { comp ->
+                val key = comp.getAnnotation(NamedRecord::class.java)?.value ?: comp.name
+                rawMap.entries.find { it.key.equals(key, ignoreCase = true) }?.value
+            }.toTypedArray()
+
+            return ctor.newInstance(*args) as T
+        }
+
+        throw IllegalArgumentException("Class ${clazz.simpleName} must have a primary constructor or be a record")
     }
+
 
     private fun loadFromFile(): T {
         val rawMap = Files.newInputStream(file).use { parser.parse(it) }

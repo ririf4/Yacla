@@ -3,12 +3,14 @@ package net.ririfa.yacla.ext.db.loader.impl
 import net.ririfa.cask.Cask
 import net.ririfa.yacla.ext.db.loader.DBConfigLoader
 import net.ririfa.yacla.ext.db.internal.DBAccessLayer
+import net.ririfa.yacla.ext.db.sync.SyncDispatcher
 
 class DefaultDBConfigLoader<T : Any>(
     private val type: Class<T>,
     private val key: String,
     private val cache: Cask<String, T>,
-    private val db: DBAccessLayer
+    private val db: DBAccessLayer,
+    val iDispatcher: SyncDispatcher
 ) : DBConfigLoader<T> {
 
     override val config: T
@@ -32,6 +34,6 @@ class DefaultDBConfigLoader<T : Any>(
     }
 
     override fun withKey(key: String): DBConfigLoader<T> {
-        return DefaultDBConfigLoader(type, key, cache, db)
+        return DefaultDBConfigLoader(type, key, cache, db, iDispatcher)
     }
 }

@@ -1,5 +1,7 @@
 package net.ririfa.yacla.ext.db.loader
 
+import net.ririfa.yacla.ext.db.sync.SyncDispatcher
+
 interface DBConfigLoader<T : Any> {
     val config: T
     fun reload(): DBConfigLoader<T>

@@ -1,5 +1,6 @@
 package net.ririfa.yacla.json
 
+import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.fasterxml.jackson.module.kotlin.readValue
@@ -20,37 +21,11 @@ class JsonParser : ConfigParser {
 
     override val supportedExtensions: Set<String> = setOf("json")
 
-    override fun <T : Any> parse(input: InputStream, clazz: Class<T>): T {
-        val bytes = input.readBytes()
+    override fun parse(input: InputStream): Map<String, Any> {
         return try {
-            mapper.readValue(bytes, clazz)
-        } catch (_: Exception) {
-            val map: Map<String, Any> = mapper.readValue(bytes)
-
-            when {
-                clazz.kotlin.primaryConstructor != null -> {
-                    val ctor = clazz.kotlin.primaryConstructor!!
-                    val args = ctor.parameters.associateWith { param ->
-                        map.entries.find { it.key.equals(param.name, ignoreCase = true) }?.value
-                    }
-                    ctor.callBy(args)
-                }
-
-                clazz.isRecord -> {
-                    val components = clazz.recordComponents
-                    val ctor = clazz.declaredConstructors.first()
-                    val args = components.map { comp ->
-                        val key = comp.getAnnotation(NamedRecord::class.java)?.value ?: comp.name
-                        map.entries.find { it.key.equals(key, ignoreCase = true) }?.value
-                    }.toTypedArray()
-                    @Suppress("UNCHECKED_CAST")
-                    ctor.newInstance(*args) as T
-                }
-
-                else -> {
-                    throw YaclaConfigException("Class ${clazz.simpleName} does not have a primary constructor or is not a record")
-                }
-            }
+            mapper.readValue(input, object : TypeReference<Map<String, Any>>() {})
+        } catch (ex: Exception) {
+            throw YaclaConfigException("Failed to parse JSON", ex)
         }
     }
 
