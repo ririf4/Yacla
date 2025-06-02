@@ -17,7 +17,6 @@ import net.ririfa.yacla.parser.ConfigParser
 import java.lang.reflect.Modifier
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.reflect.KClass
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.primaryConstructor
 
@@ -45,8 +44,7 @@ class DefaultConfigLoader<T : Any>(
     private val parser: ConfigParser,
     private val file: Path,
     private val logger: YaclaLogger?,
-    private val resourcePath: String,
-    private val contextProviders: Map<KClass<*>, () -> Any>
+    private val resourcePath: String
 ) : ConfigLoader<T> {
 
     override var config: T = loadFromFile()
@@ -85,8 +83,6 @@ class DefaultConfigLoader<T : Any>(
             val ifNull = field.getAnnotation(IfNullEvenRequired::class.java)
             if (ifNull != null && (value == null || (value is String && value.isBlank()))) {
                 val handlerClass = ifNull.handler.java
-                val contextClass = ifNull.context.java
-                val contextType = ifNull.contextType
 
                 val handler = try {
                     handlerClass.getDeclaredConstructor().newInstance()
@@ -95,25 +91,12 @@ class DefaultConfigLoader<T : Any>(
                     continue
                 }
 
-                val context = if (contextClass == Void::class.java) null else contextProviders[contextClass.kotlin]?.invoke()
-
-                when (handler) {
-                    is ErrorHandlerWith<*> -> {
-                        try {
-                            if (context != null) {
-                                @Suppress("UNCHECKED_CAST")
-                                (handler as ErrorHandlerWith<Any>).handle(value, config, context, contextType)
-                                logger?.info("Executed handler ${handlerClass.simpleName} for field '${field.name}'")
-                            } else {
-                                logger?.warn("Context is null for handler ${handlerClass.simpleName}, field '${field.name}'")
-                            }
-                        } catch (e: Exception) {
-                            logger?.error("Exception in handler '${handlerClass.simpleName}' for '${field.name}'", e)
-                        }
-                    }
-                    else -> {
-                        logger?.error("Handler '${handlerClass.simpleName}' must implement ErrorHandlerWith")
-                    }
+                try {
+                    @Suppress("UNCHECKED_CAST")
+                    (handler as ErrorHandlerWith).handle(value)
+                    logger?.info("Executed handler ${handlerClass.simpleName} for field '${field.name}'")
+                } catch (e: Exception) {
+                    logger?.error("Exception in handler '${handlerClass.simpleName}' for '${field.name}'", e)
                 }
             }
 

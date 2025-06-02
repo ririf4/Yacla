@@ -6,7 +6,7 @@ slf4j-api = "2.1.0-alpha1"
 jackson = "2.19.0"
 kryo = "5.6.2"
 
-cask = "0.0.1-SNAPSHOT"
+cask = "0.0.1+alpha.2"
 
 [plugins]
 kotlin={ id="org.jetbrains.kotlin.jvm", version.ref="kotlin" }
@@ -17,7 +17,6 @@ jackson={ module="com.fasterxml.jackson.core:jackson-databind", version.ref="jac
 jackson-kotlin={ module="com.fasterxml.jackson.module:jackson-module-kotlin", version.ref="jackson" }
 kryo = { module = "com.esotericsoftware:kryo", version.ref = "kryo" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j-api" }
-cask = { module = "net.ririfa:Cask", version.ref = "cask" }
-
+cask = { module = "net.ririfa:cask", version.ref = "cask" }
 
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }

@@ -33,7 +33,6 @@ class DefaultConfigLoaderBuilder<T : Any>(
     private var parser: ConfigParser? = null
     private var logger: YaclaLogger? = null
     private var autoUpdate = false
-    private val contextProviders = mutableMapOf<KClass<*>, () -> Any>()
 
     init {
         DefaultHandlers.registerDefaults()
@@ -69,16 +68,6 @@ class DefaultConfigLoaderBuilder<T : Any>(
         autoUpdate = defaults.autoUpdate
     }
 
-    override fun <CTX : Any> registerContextProvider(type: KClass<CTX>, provider: () -> CTX): ConfigLoaderBuilder<T> {
-        contextProviders[type] = provider
-        return this
-    }
-
-    override fun <CTX : Any> registerContextProvider(type: Class<CTX>, provider: () -> CTX): ConfigLoaderBuilder<T> {
-        contextProviders[type.kotlin] = provider
-        return this
-    }
-
     override fun load(): ConfigLoader<T> {
         Objects.requireNonNull(resourcePath, "Resource path is not set")
         Objects.requireNonNull(targetFile, "Target file is not set")
@@ -97,8 +86,7 @@ class DefaultConfigLoaderBuilder<T : Any>(
             parser = parser!!,
             file = targetFile!!,
             logger = logger,
-            resourcePath = resourcePath!!,
-            contextProviders = contextProviders
+            resourcePath = resourcePath!!
         ).also { loader ->
             if (autoUpdate) {
                 loader.updateConfig()

@@ -10,11 +10,14 @@ class DefaultDBConfigLoader<T : Any>(
     private val key: String,
     private val cache: Cask<String, T>,
     private val db: DBAccessLayer,
-    val iDispatcher: SyncDispatcher
+    private val iDispatcher: SyncDispatcher
 ) : DBConfigLoader<T> {
 
     override val config: T
         get() = cache.get(key) ?: throw IllegalStateException("No config cached for key=$key")
+
+    override val syncDispatcher: SyncDispatcher
+        get() = iDispatcher
 
     override fun reload(): DBConfigLoader<T> {
         val fresh = db.load(type, key)

@@ -50,28 +50,6 @@ interface ConfigLoaderBuilder<T : Any> {
     fun autoUpdateIfOutdated(enabled: Boolean): ConfigLoaderBuilder<T>
 
     /**
-     * Registers a context provider for the given type.
-     *
-     * This allows the loader to inject additional context objects into the config
-     * during loading, useful for dependency injection or contextual data.
-     *
-     * @param type The type of the context object.
-     * @param provider A function that provides an instance of the context object.
-     */
-    fun <CTX : Any> registerContextProvider(type: KClass<CTX>, provider: () -> CTX): ConfigLoaderBuilder<T>
-
-    /**
-     * Registers a context provider for the given type.
-     *
-     * This allows the loader to inject additional context objects into the config
-     * during loading, useful for dependency injection or contextual data.
-     *
-     * @param type The type of the context object.
-     * @param provider A function that provides an instance of the context object.
-     */
-    fun <CTX : Any> registerContextProvider(type: Class<CTX>, provider: () -> CTX): ConfigLoaderBuilder<T>
-
-    /**
      * Builds and loads the config, returning a [ConfigLoader] instance.
      *
      * @return Loaded config handler.
