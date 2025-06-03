@@ -1,5 +1,6 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.gradle.kotlin.dsl.withType
+import org.jetbrains.dokka.gradle.tasks.DokkaGeneratePublicationTask
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.net.HttpURLConnection
@@ -165,11 +166,10 @@ subprojects {
         }
     }
 
-    tasks.register<Jar>("dokkaJavadocJar") {
-        group = "documentation"
-        description = "Javadoc jar generated via Dokka 2.x"
+    tasks.register<Jar>("dokkaHtmlJar") {
+        dependsOn(tasks.named("dokkaGeneratePublicationHtml"))
+        from(tasks.named<DokkaGeneratePublicationTask>("dokkaGeneratePublicationHtml").flatMap { it.outputDirectory })
         archiveClassifier.set("javadoc")
-        from(layout.buildDirectory.dir("dokka/htmlPublication"))
     }
 
     publishing {
