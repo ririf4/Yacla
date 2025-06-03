@@ -130,7 +130,7 @@ subprojects {
     }
 
     tasks.register<ShadowJar>("relocatedFatJar") {
-        group = "build"
+        group = "ririfa"
         description = "Creates a relocated fat jar containing shadedAPI dependencies"
         archiveClassifier.set("fat")
         configurations.add(project.configurations.getByName("shadedAPI"))
@@ -154,7 +154,7 @@ subprojects {
                         .toList()
                 }
 
-                val basePackage = inferCommonPackagePrefix(classNames)
+                val basePackage = inferDominantTopPackage(classNames)
                 if (basePackage.isNotBlank()) {
                     val moduleName = artifact.moduleVersion.id.name
                     val relocated = "net.ririfa.shaded.$moduleName"
@@ -165,6 +165,13 @@ subprojects {
         }
     }
 
+    tasks.register<Jar>("dokkaJavadocJar") {
+        group = "documentation"
+        description = "Javadoc jar generated via Dokka 2.x"
+        archiveClassifier.set("javadoc")
+        from(layout.buildDirectory.dir("dokka/htmlPublication"))
+    }
+
     publishing {
         publications {
             create<MavenPublication>("maven") {
@@ -173,8 +180,9 @@ subprojects {
                 version = project.version.toString()
 
                 artifact(tasks.named<Jar>("plainJar"))
-
                 artifact(tasks.named<ShadowJar>("relocatedFatJar"))
+                artifact(tasks.named<Jar>("sourcesJar"))
+                artifact(tasks.named<Jar>("javadocJar"))
 
                 pom {
                     name.set(project.name)
@@ -216,33 +224,22 @@ subprojects {
     }
 }
 
-fun inferCommonPackagePrefix(classNames: List<String>): String {
-    val packages = classNames
+fun inferDominantTopPackage(classNames: List<String>): String {
+    val topPackages = classNames
+        .asSequence()
         .mapNotNull {
             it.replace('/', '.')
-                .takeIf { name -> name.endsWith(".class") }
-                ?.removeSuffix(".class")
-                ?.substringBeforeLast('.', "")
+                .removeSuffix(".class")
+                .substringBeforeLast('.', "")
+                .split('.')
+                .firstOrNull()
         }
-        .map { it.split('.') }
-        .filter { it.size >= 2 }
 
-    if (packages.isEmpty()) return ""
-
-    var common = packages.first().toMutableList()
-
-    for (pkg in packages.drop(1)) {
-        val minLength = minOf(common.size, pkg.size)
-        for (i in 0 until minLength) {
-            if (common[i] != pkg[i]) {
-                common = common.take(i).toMutableList()
-                break
-            }
-        }
-        if (common.isEmpty()) break
-    }
-
-    return common.joinToString(".")
+    return topPackages
+        .groupingBy { it }
+        .eachCount()
+        .maxByOrNull { it.value }
+        ?.key ?: ""
 }
 
 project(":yacla-core") {
@@ -255,7 +252,7 @@ project(":yacla-core") {
     afterEvaluate {
         dependencies {
             api(libs.slf4j.api)
-            api(libs.kotlin.reflect)
+            shadedAPI(libs.kotlin.reflect)
         }
     }
 }
