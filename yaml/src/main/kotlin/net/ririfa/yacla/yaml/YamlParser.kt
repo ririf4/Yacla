@@ -1,17 +1,14 @@
 package net.ririfa.yacla.yaml
 
 import net.ririfa.yacla.annotation.NamedRecord
-import net.ririfa.yacla.exception.YaclaConfigException
 import net.ririfa.yacla.loader.UpdateStrategyRegistry
 import net.ririfa.yacla.parser.ConfigParser
 import org.snakeyaml.engine.v2.api.Dump
 import org.snakeyaml.engine.v2.api.DumpSettings
 import org.snakeyaml.engine.v2.api.Load
 import org.snakeyaml.engine.v2.api.LoadSettings
-import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.io.OutputStream
-import kotlin.reflect.full.primaryConstructor
 
 /**
  * Default [ConfigParser] implementation for YAML configuration files.
@@ -45,6 +42,14 @@ class YamlParser : ConfigParser {
 
     override val supportedExtensions: Set<String> = setOf("yml", "yaml")
 
+    /**
+     * Parses YAML content from the given [InputStream] into a [Map] of key-value pairs.
+     *
+     * @param input the input stream containing YAML data
+     * @return a [Map] representing the YAML document root
+     * @throws IllegalStateException if the parsed content is null
+     * @throws IllegalArgumentException if the parsed content is not a [Map]
+     */
     override fun parse(input: InputStream): Map<String, Any> {
         val obj = loader.loadFromInputStream(input)
             ?: throw IllegalStateException("Parsed config is null")
@@ -54,6 +59,12 @@ class YamlParser : ConfigParser {
             ?: throw IllegalArgumentException("Expected YAML to produce Map<String, Any>, got ${obj::class.java}")
     }
 
+    /**
+     * Serializes the given configuration object into YAML and writes it to the output stream.
+     *
+     * @param output the output stream to write YAML content
+     * @param config the configuration object to serialize
+     */
     override fun <T : Any> write(output: OutputStream, config: T) {
         val yamlString = dumper.dumpToString(config)
         output.writer().use { it.write(yamlString) }
