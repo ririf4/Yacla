@@ -36,6 +36,13 @@ class DefaultDBConfigLoader<T : Any>(
         cache.put(key, current)
     }
 
+    override fun updateA(block: T.() -> Unit): Boolean {
+        val current = cache.get(key) ?: return false
+        current.block()
+        cache.put(key, current)
+        return save()
+    }
+
     override fun withKey(key: String): DBConfigLoader<T> {
         return DefaultDBConfigLoader(type, key, cache, db, iDispatcher)
     }

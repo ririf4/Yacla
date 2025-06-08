@@ -46,6 +46,14 @@ interface DBConfigLoader<T : Any> {
     fun update(block: T.() -> Unit)
 
     /**
+     * Applies a mutation to the config object and immediately saves it to the database.
+     *
+     * @param block the mutation logic to run on the config object
+     * @return true if the save was successful, false otherwise
+     */
+    fun updateA(block: T.() -> Unit): Boolean
+
+    /**
      * Returns a new loader instance pointing to the given key in the same table.
      *
      * @param key the new logical key for the config object

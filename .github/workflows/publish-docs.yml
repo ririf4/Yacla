@@ -45,16 +45,26 @@ jobs:
           cp -r ${{ matrix.dir }}/build/dokka/html/* pushrepo/${{ matrix.name }}/
 
       - name: Commit and push
+        id: commit_and_push
         run: |
           cd pushrepo
           git checkout -B docs-${{ matrix.name }}
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add .
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            echo "pr_needed=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
           git commit -m "docs: update for ${{ matrix.name }}"
           git push -f origin docs-${{ matrix.name }}
+          echo "pr_needed=true" >> $GITHUB_OUTPUT
 
       - name: Create PR
+        if: steps.commit_and_push.outputs.pr_needed == 'true'
         env:
           GH_TOKEN: ${{ secrets.PAT }}
         run: |

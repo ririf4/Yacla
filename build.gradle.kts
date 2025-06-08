@@ -14,10 +14,10 @@ plugins {
     `maven-publish`
 }
 
-val coreVer = "1.1.0+beta.5"
-val yamlVer = "1.1.0+beta.2"
-val jsonVer = "1.1.0+beta.2"
-val extDbVer = "1.1.0+beta.6"
+val coreVer = "1.1.0+rc.4"
+val yamlVer = "1.1.0+rc.4"
+val jsonVer = "1.1.0+rc.4"
+val extDbVer = "1.1.0+rc.4"
 
 allprojects {
     group = "net.ririfa"
@@ -54,6 +54,10 @@ subprojects {
         }
 
         artifacts.forEach { artifact ->
+            logger.lifecycle("Pack: ${artifact.moduleVersion.id.group}")
+            logger.lifecycle("Name: ${artifact.moduleVersion.id.name}")
+            logger.lifecycle("Module Group: ${artifact.moduleVersion.id.module.group}")
+            logger.lifecycle("Module Name: ${artifact.moduleVersion.id.module.name}")
             val id = artifact.moduleVersion.id
             val notation = "${id.group}:${id.name}:${id.version}"
             //logger.lifecycle("Automatically adding to api: $notation in ${project.name}")
@@ -131,6 +135,7 @@ subprojects {
     }
 
     tasks.register<ShadowJar>("relocatedFatJar") {
+        dependsOn("classes")
         group = "ririfa"
         description = "Creates a relocated fat jar containing shadedAPI dependencies"
         archiveClassifier.set("fat")
@@ -147,26 +152,38 @@ subprojects {
             }
 
             artifacts.forEach { artifact ->
+                val moduleName = artifact.moduleVersion.id.name.replace("-", "_")
                 val jarFile = artifact.file
-                val classNames = JarFile(jarFile).use { jar ->
+
+                val classPackages = JarFile(jarFile).use { jar ->
                     jar.entries().asSequence()
                         .filter { it.name.endsWith(".class") && !it.name.startsWith("META-INF") }
-                        .map { it.name }
-                        .toList()
+                        .mapNotNull { entry ->
+                            entry.name
+                                .replace('/', '.')
+                                .removeSuffix(".class")
+                                .substringBeforeLast('.', "")
+                        }
+                        .toSet()
                 }
 
-                val basePackage = inferDominantTopPackage(classNames)
-                if (basePackage.isNotBlank()) {
-                    val moduleName = artifact.moduleVersion.id.name
-                    val relocated = "net.ririfa.shaded.$moduleName"
-                    logger.lifecycle("Relocating $basePackage → $relocated")
-                    relocate(basePackage, relocated)
+                if (classPackages.any { it.startsWith("net.ririfa") }) {
+                    logger.lifecycle("Skipping relocation for ${artifact.moduleVersion.id} (self package detected)")
+                    return@forEach
+                }
+
+                classPackages.forEach { pkg ->
+                    val relocated = "net.ririfa.shaded.$moduleName.${pkg.replace('.', '_')}"
+                    logger.lifecycle("Relocating $pkg → $relocated")
+                    relocate(pkg, relocated)
                 }
             }
         }
     }
 
     tasks.register<Jar>("dokkaHtmlJar") {
+        group = "dokka"
+        description = "Generates HTML documentation using Dokka"
         dependsOn(tasks.named("dokkaGeneratePublicationHtml"))
         from(tasks.named<DokkaGeneratePublicationTask>("dokkaGeneratePublicationHtml").flatMap { it.outputDirectory })
         archiveClassifier.set("javadoc")
@@ -182,7 +199,7 @@ subprojects {
                 artifact(tasks.named<Jar>("plainJar"))
                 artifact(tasks.named<ShadowJar>("relocatedFatJar"))
                 artifact(tasks.named<Jar>("sourcesJar"))
-                artifact(tasks.named<Jar>("javadocJar"))
+                artifact(tasks.named<Jar>("dokkaHtmlJar"))
 
                 pom {
                     name.set(project.name)
@@ -244,7 +261,7 @@ fun inferDominantTopPackage(classNames: List<String>): String {
 
 project(":yacla-core") {
     val shadedAPI = configurations.create("shadedAPI") {
-        isTransitive = true
+        isTransitive = false
         isCanBeConsumed = false
         isCanBeResolved = true
     }
@@ -252,8 +269,12 @@ project(":yacla-core") {
     afterEvaluate {
         dependencies {
             api(libs.slf4j.api)
-            shadedAPI(libs.kotlin.reflect)
+            api(libs.kotlin.reflect)
         }
+    }
+
+    tasks.named("publishMavenPublicationToMavenRepository") {
+        dependsOn("jar")
     }
 }
 
@@ -269,6 +290,13 @@ project(":yacla-yaml") {
             shadedAPI(libs.yaml)
             compileOnly(project(":yacla-core"))
         }
+    }
+
+    tasks.named("dokkaGeneratePublicationHtml") {
+        dependsOn(":yacla-core:plainJar")
+    }
+    tasks.named("publishMavenPublicationToMavenRepository") {
+        dependsOn("jar")
     }
 }
 
@@ -286,6 +314,13 @@ project(":yacla-json") {
             compileOnly(project(":yacla-core"))
         }
     }
+
+    tasks.named("dokkaGeneratePublicationHtml") {
+        dependsOn(":yacla-core:plainJar")
+    }
+    tasks.named("publishMavenPublicationToMavenRepository") {
+        dependsOn("jar")
+    }
 }
 
 project(":yacla-ext-db") {
@@ -298,8 +333,15 @@ project(":yacla-ext-db") {
     afterEvaluate {
         dependencies {
             compileOnly(project(":yacla-core"))
-            shadedAPI(libs.cask)
+            api(libs.cask)
             shadedAPI(libs.kryo)
         }
+    }
+
+    tasks.named("dokkaGeneratePublicationHtml") {
+        dependsOn(":yacla-core:plainJar")
+    }
+    tasks.named("publishMavenPublicationToMavenRepository") {
+        dependsOn("jar")
     }
 }

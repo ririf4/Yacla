@@ -167,6 +167,8 @@ class DefaultConfigLoader<T : Any>(
                 } catch (e: Exception) {
                     logger?.error("Failed to set default for field '${field.name}'", e)
                 }
+            } else {
+                logger?.warn("DefaultHandler returned null for '${field.name}'")
             }
         }
         return this
@@ -218,7 +220,6 @@ class DefaultConfigLoader<T : Any>(
 
         throw IllegalArgumentException("Class ${clazz.simpleName} must have a primary constructor or be a record")
     }
-
 
     private fun loadFromFile(): T {
         val rawMap = Files.newInputStream(file).use { parser.parse(it) }

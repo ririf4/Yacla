@@ -3,14 +3,11 @@ package net.ririfa.yacla.json
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
-import com.fasterxml.jackson.module.kotlin.readValue
-import net.ririfa.yacla.annotation.NamedRecord
 import net.ririfa.yacla.exception.YaclaConfigException
 import net.ririfa.yacla.loader.UpdateStrategyRegistry
 import net.ririfa.yacla.parser.ConfigParser
 import java.io.InputStream
 import java.io.OutputStream
-import kotlin.reflect.full.primaryConstructor
 
 class JsonParser : ConfigParser {
     val mapper: ObjectMapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
