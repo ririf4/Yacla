@@ -8,7 +8,9 @@ import net.ririfa.yacla.ext.db.loader.DBConfigLoader
 import net.ririfa.yacla.ext.db.loader.DBConfigLoaderBuilder
 import net.ririfa.yacla.ext.db.sync.SyncDispatcher
 import net.ririfa.yacla.ext.db.sync.SyncDispatcher.SyncTask
-import net.ririfa.yacla.ext.db.internal.impl.JdbcBinaryAccessLayer
+import net.ririfa.yacla.ext.db.internal.impl.JooqBinaryAccessLayer
+import org.jooq.DSLContext
+import org.jooq.Table
 import java.time.Duration
 import javax.sql.DataSource
 
@@ -17,6 +19,8 @@ class DefaultDBConfigLoaderBuilder<T : Any>(
 ) : DBConfigLoaderBuilder<T> {
 
     private lateinit var iDataSource: DataSource
+    private lateinit var iDsl: DSLContext
+    private lateinit var iTable: Table<*>
     private var table: String = "yacla_config"
     private var key: String = "default"
     private var iTtl: Duration = Duration.ofMinutes(10)
@@ -46,12 +50,26 @@ class DefaultDBConfigLoaderBuilder<T : Any>(
         this.iMaxSize = size
     }
 
+    fun dsl(dsl: DSLContext): DefaultDBConfigLoaderBuilder<T> = apply {
+        this.iDsl = dsl
+    }
+
+    fun table(table: Table<*>): DefaultDBConfigLoaderBuilder<T> = apply {
+        this.iTable = table
+    }
+
     override fun load(): DBConfigLoader<T> {
         if (!::iDataSource.isInitialized) {
             throw IllegalStateException("DataSource must be set")
         }
+        if (!::iDsl.isInitialized) {
+            throw IllegalStateException("DSLContext must be set")
+        }
+        if (!::iTable.isInitialized) {
+            throw IllegalStateException("Table must be set")
+        }
 
-        val access = JdbcBinaryAccessLayer(iDataSource, table)
+        val access = JooqBinaryAccessLayer(iDsl, iTable)
         val dispatcher = SyncDispatcher(access)
 
         val cache = cask<String, T> {
@@ -65,4 +83,5 @@ class DefaultDBConfigLoaderBuilder<T : Any>(
 
         return DefaultDBConfigLoader(clazz, key, cache, access, dispatcher)
     }
+
 }

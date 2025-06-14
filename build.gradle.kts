@@ -1,5 +1,4 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-import org.gradle.kotlin.dsl.withType
 import org.jetbrains.dokka.gradle.tasks.DokkaGeneratePublicationTask
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
@@ -14,10 +13,10 @@ plugins {
     `maven-publish`
 }
 
-val coreVer = "1.1.0+rc.4"
-val yamlVer = "1.1.0+rc.4"
-val jsonVer = "1.1.0+rc.4"
-val extDbVer = "1.1.0+rc.4"
+val coreVer = "1.1.0+rc.6"
+val yamlVer = "1.1.0+rc.5"
+val jsonVer = "1.1.0+rc.5"
+val extDbVer = "1.1.0+rc.6"
 
 allprojects {
     group = "net.ririfa"
@@ -48,7 +47,7 @@ subprojects {
 
         val artifacts = try {
             shadedAPI.resolvedConfiguration.resolvedArtifacts
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             //logger.warn("Could not resolve shadedAPI in ${project.name}: ${e.message}")
             emptySet<ResolvedArtifact>()
         }
@@ -173,6 +172,7 @@ subprojects {
                 }
 
                 classPackages.forEach { pkg ->
+                    if (pkg.isBlank()) return@forEach
                     val relocated = "net.ririfa.shaded.$moduleName.${pkg.replace('.', '_')}"
                     logger.lifecycle("Relocating $pkg → $relocated")
                     relocate(pkg, relocated)
@@ -239,24 +239,6 @@ subprojects {
             }
         }
     }
-}
-
-fun inferDominantTopPackage(classNames: List<String>): String {
-    val topPackages = classNames
-        .asSequence()
-        .mapNotNull {
-            it.replace('/', '.')
-                .removeSuffix(".class")
-                .substringBeforeLast('.', "")
-                .split('.')
-                .firstOrNull()
-        }
-
-    return topPackages
-        .groupingBy { it }
-        .eachCount()
-        .maxByOrNull { it.value }
-        ?.key ?: ""
 }
 
 project(":yacla-core") {
@@ -334,6 +316,7 @@ project(":yacla-ext-db") {
         dependencies {
             compileOnly(project(":yacla-core"))
             api(libs.cask)
+            shadedAPI(libs.jooq)
             shadedAPI(libs.kryo)
         }
     }
@@ -343,5 +326,25 @@ project(":yacla-ext-db") {
     }
     tasks.named("publishMavenPublicationToMavenRepository") {
         dependsOn("jar")
+    }
+}
+
+project(":yacla-test") {
+    val shadedAPI = configurations.create("shadedAPI") {
+        isTransitive = false
+        isCanBeConsumed = false
+        isCanBeResolved = true
+    }
+
+    afterEvaluate {
+        dependencies {
+            implementation(project(":yacla-core"))
+            implementation(project(":yacla-yaml"))
+            implementation(project(":yacla-json"))
+        }
+    }
+
+    tasks.named("dokkaGeneratePublicationHtml") {
+        dependsOn(":yacla-core:plainJar")
     }
 }

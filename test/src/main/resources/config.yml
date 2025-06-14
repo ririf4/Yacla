@@ -1,0 +1,94 @@
+version: "1.1.0"
+
+# ────────────────
+# Thank you for installing Fabricord!
+# This mod bridges your Minecraft server chat and Discord.
+#
+# Links:
+#   GitHub          -> https://github.com/ririf4/Fabricord
+#   Modrinth        -> https://modrinth.com/mod/fabricord
+#   Community Discord -> https://discord.swiftstorm.dev
+# ────────────────
+
+# Your Discord bot token.
+# Create a bot and get a token here:
+# https://discord.com/developers/applications
+BotToken: ""
+
+# Discord channel ID where server logs and chat will be sent.
+# Leave blank to disable logging to Discord.
+# Learn how to get channel IDs:
+# https://support.discord.com/hc/en-us/articles/206346498
+LogChannelID: ""
+
+# What types of messages to send from Minecraft to Discord.
+# Options: Chat, Advancement, Death, Join, Leave
+# Example:
+# WillSends:
+#   - "Chat"
+#   - "Join"
+WillSends:
+  - "Chat"
+  - "Advancement"
+  - "Death"
+  - "Join"
+  - "Leave"
+
+# ── Bot Appearance Settings ──
+
+# Activity type shown on Discord.
+# Options: PLAYING, COMPETING, LISTENING, WATCHING
+# Default: PLAYING
+BotActivityStatus: ""
+
+# Custom activity text.
+# Default: "Minecraft"
+BotActivityMessage: ""
+
+# Bot's online status.
+# Options: ONLINE, IDLE, DO_NOT_DISTURB
+# Default: ONLINE
+BotOnlineStatus: ""
+
+# Message format style.
+# Options: classic, modern
+# Default: classic
+MessageStyle: ""
+
+# ── Mention Settings ──
+
+# Allow mentions like @everyone and @role from Minecraft to Discord.
+AllowMentions: false
+
+# Restrict mentions based on Discord permissions.
+# If true, only users with the proper Discord permissions can trigger mentions.
+UseUserPermissionForMentions: false
+
+# List of Discord user IDs who should never be pinged.
+BlockedUserIDs: []
+
+# List of Discord role IDs that should never be pinged.
+BlockedRoleIDs: []
+
+# ── Custom Message Settings ──
+
+# Message sent when the server starts/stops.
+ServerStartMessage: ""
+ServerStopMessage: ""
+
+# Message sent when a player joins/leaves the server.
+# Use %player% to insert the player’s name.
+PlayerJoinMessage: ""
+PlayerLeaveMessage: ""
+
+# ── Console Integration ──
+
+# If true, enables bidirectional console log interaction via Discord.
+EnableConsoleLog: false
+
+# Discord channel ID for console log commands and outputs.
+ConsoleLogChannelID: ""
+
+# ── Experimental Settings ──
+
+# No experimental settings available yet.

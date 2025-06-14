@@ -1,8 +1,8 @@
 package net.ririfa.yacla.ext.db.loader.impl
 
 import net.ririfa.cask.Cask
-import net.ririfa.yacla.ext.db.loader.DBConfigLoader
 import net.ririfa.yacla.ext.db.internal.DBAccessLayer
+import net.ririfa.yacla.ext.db.loader.DBConfigLoader
 import net.ririfa.yacla.ext.db.sync.SyncDispatcher
 
 class DefaultDBConfigLoader<T : Any>(

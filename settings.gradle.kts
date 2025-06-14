@@ -18,3 +18,6 @@ project(":json").name = "yacla-json"
 
 include(":ext-db")
 project(":ext-db").name = "yacla-ext-db"
+
+include(":test")
+project(":test").name = "yacla-test"

@@ -1,15 +1,11 @@
 package net.ririfa.yacla.loader.impl
 
-import net.ririfa.yacla.annotation.CustomLoader
-import net.ririfa.yacla.annotation.CustomValidateHandler
-import net.ririfa.yacla.annotation.Default
-import net.ririfa.yacla.annotation.IfNullEvenRequired
-import net.ririfa.yacla.annotation.NamedRecord
-import net.ririfa.yacla.annotation.Range
-import net.ririfa.yacla.annotation.Required
+import net.ririfa.yacla.MissingValue
+import net.ririfa.yacla.annotation.*
 import net.ririfa.yacla.defaults.DefaultHandlers
 import net.ririfa.yacla.loader.ConfigLoader
 import net.ririfa.yacla.loader.ErrorHandlerWith
+import net.ririfa.yacla.loader.FieldLoader
 import net.ririfa.yacla.loader.UpdateStrategyRegistry
 import net.ririfa.yacla.loader.util.UpdateContext
 import net.ririfa.yacla.logger.YaclaLogger
@@ -146,21 +142,21 @@ class DefaultConfigLoader<T : Any>(
                         handler.parse(defaultAnnotation.value, fieldType)
                     } catch (e: Exception) {
                         logger?.error("Failed to parse @Default value for field '${field.name}'", e)
-                        null
+                        MissingValue
                     }
                 } else {
                     logger?.warn("No DefaultHandler registered for '${fieldType.simpleName}' to parse @Default on '${field.name}'")
-                    null
+                    MissingValue
                 }
             } else {
-                // when no default value is provided, we can set it to null
+                // when no default value is provided, we can set it to `MissingValue`
                 // Because if Yacla sets the default value on its own,
                 // the developer will not be able to tell which of the values were actually missing when debugging.
-                // But if it sets it to null, a developer gets an NPE, and that is easier to understand.
-                null
+                // But if it sets it to `MissingValue`, a developer gets an NPE, and that is easier to understand.
+                MissingValue
             }
 
-            if (defaultValue != null) {
+            if (defaultValue != MissingValue) {
                 try {
                     field.set(config, defaultValue)
                     logger?.info("Field '${field.name}' was null or blank, set default: $defaultValue")
@@ -173,7 +169,6 @@ class DefaultConfigLoader<T : Any>(
         }
         return this
     }
-
     override fun updateConfig(): ConfigLoader<T> {
         val strategy = UpdateStrategyRegistry.strategyFor(parser)
         if (strategy != null) {
@@ -190,36 +185,67 @@ class DefaultConfigLoader<T : Any>(
     @Suppress("UNCHECKED_CAST")
     fun <T : Any> constructConfig(clazz: Class<T>, rawMap: Map<String, Any?>): T {
         val kClazz = clazz.kotlin
+        val loaderCache = mutableMapOf<Class<*>, FieldLoader>()
 
         kClazz.primaryConstructor?.let { ctor ->
             val args = ctor.parameters.associateWith { param ->
                 val name = param.name ?: return@associateWith null
                 val rawValue = rawMap.entries.find { it.key.equals(name, ignoreCase = true) }?.value
 
-                val customLoader = param.findAnnotation<CustomLoader>()
-                if (customLoader != null) {
-                    val loader = customLoader.loader.java.getDeclaredConstructor().newInstance()
+                val customLoaderAnn = param.findAnnotation<CustomLoader>()
+                val value = if (customLoaderAnn != null) {
+                    val loaderClass = customLoaderAnn.loader.java
+                    val loader = loaderCache.getOrPut(loaderClass) {
+                        loaderClass.getDeclaredConstructor().newInstance()
+                    }
                     loader.load(rawValue)
                 } else {
                     rawValue
                 }
+
+                if (value === MissingValue) {
+                    if (!param.type.isMarkedNullable) {
+                        throw IllegalStateException("Non-nullable parameter '$name' is missing (default resolution failed)")
+                    } else {
+                        null
+                    }
+                } else if (value == null && !param.type.isMarkedNullable) {
+                    throw IllegalArgumentException("Non-nullable parameter '$name' is missing or null")
+                } else {
+                    value
+                }
             }
+
+
             return ctor.callBy(args)
         }
 
         if (clazz.isRecord) {
-            val components = clazz.recordComponents
             val ctor = clazz.declaredConstructors.first()
-            val args = components.map { comp ->
+            val args = clazz.recordComponents.map { comp ->
                 val key = comp.getAnnotation(NamedRecord::class.java)?.value ?: comp.name
-                rawMap.entries.find { it.key.equals(key, ignoreCase = true) }?.value
+                val rawValue = rawMap.entries.find { it.key.equals(key, ignoreCase = true) }?.value
+
+                val customLoaderAnn = comp.getAnnotation(CustomLoader::class.java)
+                val value = if (customLoaderAnn != null) {
+                    val loaderClass = customLoaderAnn.loader.java
+                    val loader = loaderCache.getOrPut(loaderClass) {
+                        loaderClass.getDeclaredConstructor().newInstance()
+                    }
+                    loader.load(rawValue)
+                } else {
+                    rawValue
+                }
+
+                value
             }.toTypedArray()
 
             return ctor.newInstance(*args) as T
         }
 
-        throw IllegalArgumentException("Class ${clazz.simpleName} must have a primary constructor or be a record")
+        throw IllegalArgumentException("Only Kotlin data classes and Java record classes are supported")
     }
+
 
     private fun loadFromFile(): T {
         val rawMap = Files.newInputStream(file).use { parser.parse(it) }
