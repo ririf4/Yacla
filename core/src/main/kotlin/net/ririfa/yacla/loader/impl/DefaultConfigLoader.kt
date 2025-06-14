@@ -1,6 +1,6 @@
 package net.ririfa.yacla.loader.impl
 
-import net.ririfa.yacla.MissingValue
+import net.ririfa.yacla.Type
 import net.ririfa.yacla.annotation.*
 import net.ririfa.yacla.defaults.DefaultHandlers
 import net.ririfa.yacla.loader.ConfigLoader
@@ -11,6 +11,7 @@ import net.ririfa.yacla.loader.util.UpdateContext
 import net.ririfa.yacla.logger.YaclaLogger
 import net.ririfa.yacla.parser.ConfigParser
 import java.lang.reflect.Modifier
+import java.lang.reflect.ParameterizedType
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.reflect.full.findAnnotation
@@ -59,7 +60,8 @@ class DefaultConfigLoader<T : Any>(
             if (Modifier.isStatic(field.modifiers)) continue
 
             field.isAccessible = true
-            val value = field.get(config)
+            val rawValue = field.get(config)
+            val value = if (rawValue is Type<*>) rawValue.value else rawValue
             val fieldName = field.name
 
             val required = field.getAnnotation(Required::class.java)
@@ -108,7 +110,6 @@ class DefaultConfigLoader<T : Any>(
                 }
             }
 
-
             val range = field.getAnnotation(Range::class.java)
             if (range != null && value is Number) {
                 val longValue = value.toLong()
@@ -128,47 +129,50 @@ class DefaultConfigLoader<T : Any>(
             if (Modifier.isStatic(field.modifiers)) continue
 
             field.isAccessible = true
-            val value = field.get(config)
+            val raw = field.get(config)
+            val isTypeWrapped = field.type == Type::class.java
+
+            val value = if (raw is Type<*>) raw.value else raw
             val isEmpty = value == null || (value is String && value.isBlank())
             if (!isEmpty) continue
 
-            val fieldType = field.type
             val defaultAnnotation = field.getAnnotation(Default::class.java)
-
-            val defaultValue: Any? = if (defaultAnnotation != null) {
-                val handler = DefaultHandlers.get(fieldType)
-                if (handler != null) {
-                    try {
-                        handler.parse(defaultAnnotation.value, fieldType)
-                    } catch (e: Exception) {
-                        logger?.error("Failed to parse @Default value for field '${field.name}'", e)
-                        MissingValue
-                    }
-                } else {
-                    logger?.warn("No DefaultHandler registered for '${fieldType.simpleName}' to parse @Default on '${field.name}'")
-                    MissingValue
-                }
-            } else {
-                // when no default value is provided, we can set it to `MissingValue`
-                // Because if Yacla sets the default value on its own,
-                // the developer will not be able to tell which of the values were actually missing when debugging.
-                // But if it sets it to `MissingValue`, a developer gets an NPE, and that is easier to understand.
-                MissingValue
+            if (defaultAnnotation == null) {
+                logger?.warn("No @Default specified for missing field '${field.name}'")
+                continue
             }
 
-            if (defaultValue != MissingValue) {
-                try {
-                    field.set(config, defaultValue)
-                    logger?.info("Field '${field.name}' was null or blank, set default: $defaultValue")
-                } catch (e: Exception) {
-                    logger?.error("Failed to set default for field '${field.name}'", e)
+            // Determine the real target type
+            val targetType = if (isTypeWrapped) {
+                val genericType = field.genericType as? ParameterizedType
+                genericType?.actualTypeArguments?.get(0) as? Class<*> ?: run {
+                    logger?.warn("Cannot resolve generic type for field '${field.name}', using Any")
+                    Any::class.java
                 }
             } else {
-                logger?.warn("DefaultHandler returned null for '${field.name}'")
+                field.type
+            }
+
+            val handler = DefaultHandlers.get(targetType)
+            if (handler == null) {
+                logger?.warn("No DefaultHandler registered for '${targetType.simpleName}' to parse @Default on '${field.name}'")
+                continue
+            }
+
+            try {
+                val parsed = handler.parse(defaultAnnotation.value, targetType)
+                val finalValue = if (isTypeWrapped) Type(parsed, isMissing = false) else parsed
+
+                field.set(config, finalValue)
+                logger?.info("Field '${field.name}' was null or blank, set default: $finalValue")
+            } catch (e: Exception) {
+                logger?.error("Failed to parse or set default value for field '${field.name}'", e)
             }
         }
+
         return this
     }
+
     override fun updateConfig(): ConfigLoader<T> {
         val strategy = UpdateStrategyRegistry.strategyFor(parser)
         if (strategy != null) {
@@ -193,7 +197,7 @@ class DefaultConfigLoader<T : Any>(
                 val rawValue = rawMap.entries.find { it.key.equals(name, ignoreCase = true) }?.value
 
                 val customLoaderAnn = param.findAnnotation<CustomLoader>()
-                val value = if (customLoaderAnn != null) {
+                val loadedValue = if (customLoaderAnn != null) {
                     val loaderClass = customLoaderAnn.loader.java
                     val loader = loaderCache.getOrPut(loaderClass) {
                         loaderClass.getDeclaredConstructor().newInstance()
@@ -203,19 +207,15 @@ class DefaultConfigLoader<T : Any>(
                     rawValue
                 }
 
-                if (value === MissingValue) {
-                    if (!param.type.isMarkedNullable) {
-                        throw IllegalStateException("Non-nullable parameter '$name' is missing (default resolution failed)")
-                    } else {
-                        null
-                    }
-                } else if (value == null && !param.type.isMarkedNullable) {
-                    throw IllegalArgumentException("Non-nullable parameter '$name' is missing or null")
-                } else {
-                    value
+                val isMissing = rawValue == null || (rawValue is String && rawValue.isBlank())
+                val isTypeWrapped = param.type.classifier == Type::class
+
+                when {
+                    isTypeWrapped -> Type(loadedValue, isMissing)
+                    loadedValue == null && !param.type.isMarkedNullable -> throw IllegalArgumentException("Non-nullable parameter '$name' is missing or null")
+                    else -> loadedValue
                 }
             }
-
 
             return ctor.callBy(args)
         }
@@ -227,7 +227,7 @@ class DefaultConfigLoader<T : Any>(
                 val rawValue = rawMap.entries.find { it.key.equals(key, ignoreCase = true) }?.value
 
                 val customLoaderAnn = comp.getAnnotation(CustomLoader::class.java)
-                val value = if (customLoaderAnn != null) {
+                val loadedValue = if (customLoaderAnn != null) {
                     val loaderClass = customLoaderAnn.loader.java
                     val loader = loaderCache.getOrPut(loaderClass) {
                         loaderClass.getDeclaredConstructor().newInstance()
@@ -237,7 +237,16 @@ class DefaultConfigLoader<T : Any>(
                     rawValue
                 }
 
-                value
+                val isMissing = rawValue == null || (rawValue is String && rawValue.isBlank())
+                val isTypeWrapped = comp.genericType.let {
+                    it is ParameterizedType && it.rawType == Type::class.java
+                }
+
+                if (isTypeWrapped) {
+                    Type(loadedValue, isMissing)
+                } else {
+                    loadedValue
+                }
             }.toTypedArray()
 
             return ctor.newInstance(*args) as T
@@ -245,7 +254,6 @@ class DefaultConfigLoader<T : Any>(
 
         throw IllegalArgumentException("Only Kotlin data classes and Java record classes are supported")
     }
-
 
     private fun loadFromFile(): T {
         val rawMap = Files.newInputStream(file).use { parser.parse(it) }

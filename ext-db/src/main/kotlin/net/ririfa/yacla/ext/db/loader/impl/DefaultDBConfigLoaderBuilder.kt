@@ -4,11 +4,11 @@ import net.ririfa.cask.allowNullValues
 import net.ririfa.cask.cask
 import net.ririfa.cask.maxSize
 import net.ririfa.cask.ttl
+import net.ririfa.yacla.ext.db.internal.impl.JooqBinaryAccessLayer
 import net.ririfa.yacla.ext.db.loader.DBConfigLoader
 import net.ririfa.yacla.ext.db.loader.DBConfigLoaderBuilder
 import net.ririfa.yacla.ext.db.sync.SyncDispatcher
 import net.ririfa.yacla.ext.db.sync.SyncDispatcher.SyncTask
-import net.ririfa.yacla.ext.db.internal.impl.JooqBinaryAccessLayer
 import org.jooq.DSLContext
 import org.jooq.Table
 import java.time.Duration
