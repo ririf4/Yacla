@@ -14,10 +14,10 @@ plugins {
     `maven-publish`
 }
 
-val coreVer = "1.1.0+rc.4"
-val yamlVer = "1.1.0+rc.4"
-val jsonVer = "1.1.0+rc.4"
-val extDbVer = "1.1.0+rc.4"
+val coreVer = "2.0.0+rc.1"
+val yamlVer = "2.0.0+rc.1"
+val jsonVer = "2.0.0+rc.1"
+val extDbVer = "2.0.0+rc.1"
 
 allprojects {
     group = "net.ririfa"

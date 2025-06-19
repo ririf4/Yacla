@@ -19,6 +19,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.primaryConstructor
+import kotlin.reflect.javaType
 
 /**
  * Default implementation of [ConfigLoader] that loads, validates, and updates a configuration object
@@ -187,32 +188,101 @@ class DefaultConfigLoader<T : Any>(
         return this
     }
 
+    @OptIn(ExperimentalStdlibApi::class)
     @Suppress("UNCHECKED_CAST")
     fun <T : Any> constructConfig(clazz: Class<T>, rawMap: Map<String, Any?>): T {
         val kClazz = clazz.kotlin
+        val rawMutableMap = rawMap.toMutableMap()
 
         kClazz.primaryConstructor?.let { ctor ->
-            val args = ctor.parameters.associateWith { param ->
-                val name = param.name ?: return@associateWith null
-                val rawValue = rawMap.entries.find { it.key.equals(name, ignoreCase = true) }?.value
+            ctor.parameters.forEach { param ->
+                val name = param.name ?: return@forEach
+                val paramClass = (param.type.javaType as? Class<*>) ?: return@forEach
 
-                val customLoader = param.findAnnotation<CustomLoader>()
-                if (customLoader != null) {
-                    val loader = customLoader.loader.java.getDeclaredConstructor().newInstance()
-                    loader.load(rawValue)
-                } else {
-                    rawValue
+                if (!rawMutableMap.containsKey(name)) {
+                    param.findAnnotation<Default>()?.let { defaultAnn ->
+                        val handler = DefaultHandlers.get(paramClass)
+                        if (handler != null) {
+                            try {
+                                val defaultVal = handler.parse(defaultAnn.value, paramClass)
+                                rawMutableMap[name] = defaultVal
+                                logger?.info("Injected @Default for '$name': $defaultVal")
+                            } catch (e: Exception) {
+                                logger?.error("Failed to parse @Default for parameter '$name'", e)
+                            }
+                        } else {
+                            logger?.warn("No DefaultHandler for parameter '$name' of type ${paramClass.simpleName}")
+                        }
+                    }
+                }
+
+                if (rawMutableMap.containsKey(name)) {
+                    param.findAnnotation<CustomLoader>()?.let { customLoader ->
+                        try {
+                            val loader = customLoader.loader.java.getDeclaredConstructor().newInstance()
+                            val originalValue = rawMutableMap[name]
+                            val loadedValue = loader.load(originalValue)
+                            rawMutableMap[name] = loadedValue
+                            logger?.info("Applied CustomLoader for '$name': $loadedValue")
+                        } catch (e: Exception) {
+                            logger?.error("Failed to load custom value for parameter '$name'", e)
+                        }
+                    }
                 }
             }
+
+            val args = ctor.parameters.associateWith { param ->
+                val name = param.name ?: return@associateWith null
+                rawMutableMap.entries.find { it.key.equals(name, ignoreCase = true) }?.value
+            }
+
             return ctor.callBy(args)
         }
 
         if (clazz.isRecord) {
             val components = clazz.recordComponents
             val ctor = clazz.declaredConstructors.first()
+
+            for (comp in components) {
+                val name = comp.name
+
+                if (!rawMutableMap.containsKey(name)) {
+                    val defaultAnn = comp.getAnnotation(Default::class.java)
+                    if (defaultAnn != null) {
+                        val handler = DefaultHandlers.get(comp.type)
+                        if (handler != null) {
+                            try {
+                                val defaultVal = handler.parse(defaultAnn.value, comp.type)
+                                rawMutableMap[name] = defaultVal
+                                logger?.info("Injected @Default for record component '$name': $defaultVal")
+                            } catch (e: Exception) {
+                                logger?.error("Failed to parse @Default for record component '$name'", e)
+                            }
+                        } else {
+                            logger?.warn("No DefaultHandler for record component '${comp.type.simpleName}'")
+                        }
+                    }
+                }
+
+                if (rawMutableMap.containsKey(name)) {
+                    val customLoaderAnn = comp.getAnnotation(CustomLoader::class.java)
+                    if (customLoaderAnn != null) {
+                        try {
+                            val loader = customLoaderAnn.loader.java.getDeclaredConstructor().newInstance()
+                            val originalValue = rawMutableMap[name]
+                            val loadedValue = loader.load(originalValue)
+                            rawMutableMap[name] = loadedValue
+                            logger?.info("Applied CustomLoader for record component '$name': $loadedValue")
+                        } catch (e: Exception) {
+                            logger?.error("Failed to apply CustomLoader for record component '$name'", e)
+                        }
+                    }
+                }
+            }
+
             val args = components.map { comp ->
                 val key = comp.getAnnotation(NamedRecord::class.java)?.value ?: comp.name
-                rawMap.entries.find { it.key.equals(key, ignoreCase = true) }?.value
+                rawMutableMap.entries.find { it.key.equals(key, ignoreCase = true) }?.value
             }.toTypedArray()
 
             return ctor.newInstance(*args) as T
