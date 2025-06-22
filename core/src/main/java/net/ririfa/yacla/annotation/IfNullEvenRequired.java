@@ -34,7 +34,7 @@ import java.lang.annotation.Target;
  *
  * @see ErrorHandlerWith
  */
-@Target(ElementType.FIELD)
+@Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.RECORD_COMPONENT})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface IfNullEvenRequired {
     /**

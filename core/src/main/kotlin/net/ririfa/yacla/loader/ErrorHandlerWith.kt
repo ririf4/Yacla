@@ -24,5 +24,5 @@ interface ErrorHandlerWith {
      *
      * @param fieldValue the current value of the field (typically null or blank string)
      */
-    fun handle(fieldValue: Any?)
+    fun handle(fieldValue: Any?, config: Any?)
 }

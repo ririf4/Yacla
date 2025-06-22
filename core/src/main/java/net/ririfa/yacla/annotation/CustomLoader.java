@@ -35,7 +35,7 @@ import java.lang.annotation.Target;
  *
  * @see FieldLoader
  */
-@Target(ElementType.FIELD)
+@Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.RECORD_COMPONENT, ElementType.TYPE_USE})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface CustomLoader {
     /**

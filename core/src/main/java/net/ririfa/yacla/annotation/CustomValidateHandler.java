@@ -35,7 +35,7 @@ import java.lang.annotation.Target;
  *
  * @see FieldValidator
  */
-@Target(ElementType.FIELD)
+@Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.RECORD_COMPONENT})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface CustomValidateHandler {
     /**

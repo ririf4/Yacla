@@ -15,6 +15,6 @@ package net.ririfa.yacla.annotation
  *
  * @property value the default value as a string representation
  */
-@Target(AnnotationTarget.FIELD)
+@Target(AnnotationTarget.FIELD, AnnotationTarget.VALUE_PARAMETER, AnnotationTarget.PROPERTY)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class Default(val value: String)

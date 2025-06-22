@@ -1,7 +1,7 @@
 package net.ririfa.yacla.loader.impl
 
 import net.ririfa.yacla.LoaderSettings
-import net.ririfa.yacla.defaults.DefaultHandlers
+import net.ririfa.yacla.Yacla.loader
 import net.ririfa.yacla.loader.ConfigLoader
 import net.ririfa.yacla.loader.ConfigLoaderBuilder
 import net.ririfa.yacla.logger.YaclaLogger
@@ -9,10 +9,8 @@ import net.ririfa.yacla.parser.ConfigParser
 import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.Objects
-import kotlin.collections.set
+import java.util.*
 import kotlin.io.path.notExists
-import kotlin.reflect.KClass
 
 /**
  * Default implementation of [ConfigLoaderBuilder].
@@ -33,10 +31,6 @@ class DefaultConfigLoaderBuilder<T : Any>(
     private var parser: ConfigParser? = null
     private var logger: YaclaLogger? = null
     private var autoUpdate = false
-
-    init {
-        DefaultHandlers.registerDefaults()
-    }
 
     override fun fromResource(path: String): ConfigLoaderBuilder<T> = apply {
         this.resourcePath = path
@@ -89,8 +83,9 @@ class DefaultConfigLoaderBuilder<T : Any>(
             resourcePath = resourcePath!!
         ).also { loader ->
             if (autoUpdate) {
-                loader.updateConfig()
-                    .reload()
+                if (loader.updateConfig()) {
+                    loader.reload()
+                }
             }
         }
     }

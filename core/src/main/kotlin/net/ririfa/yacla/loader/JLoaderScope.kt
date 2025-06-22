@@ -1,7 +1,5 @@
-package net.ririfa.yacla.annotation
+package net.ririfa.yacla.loader
 
-import net.ririfa.yacla.loader.ConfigLoader
-import net.ririfa.yacla.loader.ConfigLoaderBuilder
 import java.util.function.Consumer
 
 /**

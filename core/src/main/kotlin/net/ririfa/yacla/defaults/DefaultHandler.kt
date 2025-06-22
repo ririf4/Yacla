@@ -1,26 +1,19 @@
 package net.ririfa.yacla.defaults
 
+import kotlin.reflect.KClass
+
 /**
- * Defines a handler for parsing a string value into an object of a specific type.
+ * Functional interface for converting a *raw* value (usually a `String` but any `Any?` is allowed)
+ * into an instance of the requested Kotlin type.
  *
- * Implementations of this interface are responsible for converting a raw string value
- * (typically from a @Default annotation) into the desired target type.
- *
- * Example:
- * ```
- * DefaultHandlers.register(MyType::class.java) { raw, _ -> MyType.parse(raw) }
- * ```
- *
- * @see DefaultHandlers to register custom handlers
+ * Implementations should **not** throw unless the value is inherently un‐parsable; callers treat
+ * an exception as a hard failure during configuration loading.
  */
-@FunctionalInterface
 fun interface DefaultHandler {
     /**
-     * Parses the provided raw string into an object of the given type.
-     *
-     * @param raw the string value to parse
-     * @param type the target type class
-     * @return the parsed object, or null if parsing failed
+     * @param raw  the raw value provided in the `@Default` annotation or parsed from file
+     * @param type the *erased* Kotlin class representing the desired target type
+     * @return a value compatible with [type]
      */
-    fun parse(raw: String, type: Class<*>): Any?
+    fun parse(raw: Any?, type: KClass<*>): Any?
 }

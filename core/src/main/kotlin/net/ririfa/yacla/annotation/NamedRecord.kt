@@ -21,6 +21,6 @@ package net.ririfa.yacla.annotation
  *
  * @property value the field name to map this constructor parameter to
  */
-@Target(AnnotationTarget.VALUE_PARAMETER)
+@Target(AnnotationTarget.FIELD, AnnotationTarget.VALUE_PARAMETER, AnnotationTarget.PROPERTY)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class NamedRecord(val value: String)

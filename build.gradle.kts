@@ -1,5 +1,4 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-import org.gradle.kotlin.dsl.withType
 import org.jetbrains.dokka.gradle.tasks.DokkaGeneratePublicationTask
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
@@ -14,10 +13,17 @@ plugins {
     `maven-publish`
 }
 
-val coreVer = "2.0.0+rc.1"
-val yamlVer = "2.0.0+rc.1"
-val jsonVer = "2.0.0+rc.1"
-val extDbVer = "2.0.0+rc.1"
+val coreVer = "2.0.0"
+val yamlVer = "2.0.0"
+val jsonVer = "2.0.0"
+val extDbVer = "2.0.0+alpha.1"
+
+dependencies {
+    testImplementation(project(":yacla-core"))
+    testImplementation(project(":yacla-yaml"))
+    testImplementation(project(":yacla-json"))
+    testImplementation(project(":yacla-ext-db"))
+}
 
 allprojects {
     group = "net.ririfa"
@@ -239,24 +245,6 @@ subprojects {
             }
         }
     }
-}
-
-fun inferDominantTopPackage(classNames: List<String>): String {
-    val topPackages = classNames
-        .asSequence()
-        .mapNotNull {
-            it.replace('/', '.')
-                .removeSuffix(".class")
-                .substringBeforeLast('.', "")
-                .split('.')
-                .firstOrNull()
-        }
-
-    return topPackages
-        .groupingBy { it }
-        .eachCount()
-        .maxByOrNull { it.value }
-        ?.key ?: ""
 }
 
 project(":yacla-core") {

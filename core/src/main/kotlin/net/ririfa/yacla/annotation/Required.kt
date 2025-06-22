@@ -18,8 +18,7 @@ package net.ririfa.yacla.annotation
  * ```
  *
  * @property soft whether this is a soft requirement (log warning instead of error)
- * @property named an optional name to use in logs; defaults to the field name
  */
-@Target(AnnotationTarget.FIELD)
+@Target(AnnotationTarget.FIELD, AnnotationTarget.VALUE_PARAMETER, AnnotationTarget.PROPERTY)
 @Retention(AnnotationRetention.RUNTIME)
-annotation class Required(val soft: Boolean = false, val named: String = "")
+annotation class Required(val soft: Boolean = false)
