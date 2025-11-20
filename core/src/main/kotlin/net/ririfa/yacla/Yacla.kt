@@ -1,9 +1,15 @@
 package net.ririfa.yacla
 
+import net.ririfa.yacla.Yacla.fillByDefault
 import net.ririfa.yacla.loader.ConfigLoader
 import net.ririfa.yacla.loader.ConfigLoaderBuilder
 import net.ririfa.yacla.loader.JLoaderScope
 import net.ririfa.yacla.loader.impl.DefaultConfigLoaderBuilder
+import net.ririfa.yacla.schema.FieldDefBuilder
+import net.ririfa.yacla.schema.FieldDefinition
+import net.ririfa.yacla.schema.YaclaSchema
+import kotlin.reflect.KParameter
+import kotlin.reflect.full.primaryConstructor
 
 /**
  * Yacla - Yet Another Config Loading API
@@ -160,5 +166,50 @@ object Yacla {
         noinline block: ConfigLoaderBuilder<T>.() -> Unit
     ): ConfigLoader<T> {
         return loader(T::class, block)
+    }
+
+    /**
+     * Creates a new config instance using only defaults.
+     *
+     * - If a field has a default in the given [schema], that value is used.
+     * - Otherwise, the data class primary constructor's default parameter is used (if any).
+     *
+     * No file I/O or parsing is performed.
+     */
+    @JvmStatic
+    inline fun <reified T : Any> fillByDefault(schema: YaclaSchema<T>): T =
+        fillByDefault(T::class.java, schema)
+
+    /**
+     * Java-friendly overload of [fillByDefault].
+     */
+    @JvmStatic
+    fun <T : Any> fillByDefault(clazz: Class<T>, schema: YaclaSchema<T>): T {
+        val kClazz = clazz.kotlin
+
+        // 1) Build field definitions from schema
+        val builder = FieldDefBuilder(kClazz)
+        schema.configure(builder)
+        val defs: Map<String, FieldDefinition> = builder.build()
+
+        // 2) Data class primary constructor path
+        val ctor = kClazz.primaryConstructor
+            ?: error("Config class ${clazz.simpleName} must have a primary constructor for fillByDefault()")
+
+        val args = mutableMapOf<KParameter, Any?>()
+
+        ctor.parameters.forEach { p ->
+            val name = p.name ?: return@forEach
+            val def = defs[name]
+
+            // If schema has a default, use it.
+            if (def != null && def.defaultValue !== FieldDefinition.NO_DEFAULT) {
+                args[p] = def.defaultValue
+            }
+            // else: do not put anything -> Kotlin will fall back to the
+            // primary constructor's default argument, if present.
+        }
+
+        return ctor.callBy(args)
     }
 }

@@ -2,8 +2,8 @@ package net.ririfa.yacla.loader
 
 import net.ririfa.yacla.logger.YaclaLogger
 import net.ririfa.yacla.parser.ConfigParser
+import net.ririfa.yacla.schema.YaclaSchema
 import java.nio.file.Path
-import kotlin.reflect.KClass
 
 /**
  * Builder interface for configuring and creating a [ConfigLoader] instance.
@@ -34,6 +34,13 @@ interface ConfigLoaderBuilder<T : Any> {
      * @param parser Implementation of [ConfigParser].
      */
     fun parser(parser: ConfigParser): ConfigLoaderBuilder<T>
+
+    /**
+     * Sets the schema used for validating and mapping the config data.
+     *
+     * @param schema Implementation of [YaclaSchema] for type [T].
+     */
+    fun schema(schema: YaclaSchema<T>): ConfigLoaderBuilder<T>
 
     /**
      * Sets the logger used for informational and error messages.

@@ -8,12 +8,12 @@ import java.util.jar.JarFile
 
 plugins {
     alias(libs.plugins.kotlin)
-    id("org.jetbrains.dokka") version "2.0.0"
-    id("com.gradleup.shadow") version "8.3.6" apply false
+    id("org.jetbrains.dokka") version "2.1.0"
+    id("com.gradleup.shadow") version "9.2.2" apply false
     `maven-publish`
 }
 
-val coreVer = "2.0.0"
+val coreVer = "2.1.0+rc.3"
 val yamlVer = "2.0.0"
 val jsonVer = "2.0.0"
 val extDbVer = "2.0.0+alpha.1"

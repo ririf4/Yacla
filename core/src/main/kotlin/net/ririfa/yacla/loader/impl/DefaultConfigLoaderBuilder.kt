@@ -6,6 +6,7 @@ import net.ririfa.yacla.loader.ConfigLoader
 import net.ririfa.yacla.loader.ConfigLoaderBuilder
 import net.ririfa.yacla.logger.YaclaLogger
 import net.ririfa.yacla.parser.ConfigParser
+import net.ririfa.yacla.schema.YaclaSchema
 import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.Path
@@ -29,6 +30,7 @@ class DefaultConfigLoaderBuilder<T : Any>(
     private var resourcePath: String? = null
     private var targetFile: Path? = null
     private var parser: ConfigParser? = null
+    private var schema: YaclaSchema<T>? = null
     private var logger: YaclaLogger? = null
     private var autoUpdate = false
 
@@ -42,6 +44,10 @@ class DefaultConfigLoaderBuilder<T : Any>(
 
     override fun parser(parser: ConfigParser): ConfigLoaderBuilder<T> = apply {
         this.parser = parser
+    }
+
+    override fun schema(schema: YaclaSchema<T>): ConfigLoaderBuilder<T> = apply {
+        this.schema = schema
     }
 
     override fun withLogger(logger: YaclaLogger): ConfigLoaderBuilder<T> = apply {
@@ -78,6 +84,7 @@ class DefaultConfigLoaderBuilder<T : Any>(
         return DefaultConfigLoader(
             clazz = clazz,
             parser = parser!!,
+            schema = schema,
             file = targetFile!!,
             logger = logger,
             resourcePath = resourcePath!!
