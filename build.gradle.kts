@@ -225,8 +225,9 @@ project(":yacla-core") {
         isTransitive = false
         isCanBeConsumed = false
         isCanBeResolved = true
-        extendsFrom(configurations.api.get())
     }
+
+    configurations.implementation.get().extendsFrom(shadedAPI)
 
     afterEvaluate {
         dependencies {
@@ -245,8 +246,9 @@ project(":yacla-yaml") {
         isTransitive = false
         isCanBeConsumed = false
         isCanBeResolved = true
-        extendsFrom(configurations.api.get())
     }
+
+    configurations.implementation.get().extendsFrom(shadedAPI)
 
     afterEvaluate {
         dependencies {
@@ -268,8 +270,9 @@ project(":yacla-json") {
         isTransitive = false
         isCanBeConsumed = false
         isCanBeResolved = true
-        extendsFrom(configurations.api.get())
     }
+
+    configurations.implementation.get().extendsFrom(shadedAPI)
 
     afterEvaluate {
         dependencies {
