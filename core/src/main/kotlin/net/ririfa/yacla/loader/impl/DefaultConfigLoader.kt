@@ -30,10 +30,6 @@ class DefaultConfigLoader<T : Any>(
         config = loadFromFile()
     }
 
-    override fun validate(): ConfigLoader<T> = apply {
-        logger?.info("Validation skipped")
-    }
-
     override fun updateConfig(): Boolean {
         val strategy = UpdateStrategyRegistry.strategyFor(parser)
         return if (strategy != null) {

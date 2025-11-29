@@ -41,14 +41,6 @@ interface ConfigLoader<T : Any> {
     fun reload(): ConfigLoader<T>
 
     /**
-     * Validates the configuration object based on field annotations such as [net.ririfa.yacla.annotation.Required]
-     * and [net.ririfa.yacla.annotation.Range].
-     *
-     * Throws an exception if validation fails.
-     */
-    fun validate(): ConfigLoader<T>
-
-    /**
      * Attempts to update the configuration file by merging the default resource
      * with the current file, preserving user-defined values.
      *

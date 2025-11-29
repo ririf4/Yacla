@@ -13,7 +13,7 @@ plugins {
     `maven-publish`
 }
 
-val coreVer = "2.1.0"
+val coreVer = "2.1.1"
 val yamlVer = "2.0.0"
 val jsonVer = "2.0.0"
 

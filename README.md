@@ -83,10 +83,7 @@ val config = Yacla.loader(AppConfig::class, AppSchema) {
     toFile(Paths.get("config.yml"))
     parser(YamlParser())
     autoUpdateIfOutdated(true)
-}.load()
-    .nullCheck()
-    .validate()
-    .config
+}.load().config // Return an object of type AppConfig
 ```
 
 * YAML updates **preserve comments**
