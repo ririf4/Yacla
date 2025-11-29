@@ -13,16 +13,14 @@ plugins {
     `maven-publish`
 }
 
-val coreVer = "2.1.0+rc.3"
+val coreVer = "2.1.0"
 val yamlVer = "2.0.0"
 val jsonVer = "2.0.0"
-val extDbVer = "2.0.0+alpha.1"
 
 dependencies {
     testImplementation(project(":yacla-core"))
     testImplementation(project(":yacla-yaml"))
     testImplementation(project(":yacla-json"))
-    testImplementation(project(":yacla-ext-db"))
 }
 
 allprojects {
@@ -31,7 +29,6 @@ allprojects {
         "yacla-core" -> coreVer
         "yacla-yaml" -> yamlVer
         "yacla-json" -> jsonVer
-        "yacla-ext-db" -> extDbVer
         else -> "1.0.0"
     }
 
@@ -46,30 +43,6 @@ subprojects {
     apply(plugin = "org.jetbrains.dokka")
     apply(plugin = "maven-publish")
     apply(plugin = "com.gradleup.shadow")
-
-    gradle.projectsEvaluated {
-        val shadedAPI = configurations.getByName("shadedAPI")
-
-        shadedAPI.forEach { logger.lifecycle("Shaded API: $it") }
-
-        val artifacts = try {
-            shadedAPI.resolvedConfiguration.resolvedArtifacts
-        } catch (e: Exception) {
-            //logger.warn("Could not resolve shadedAPI in ${project.name}: ${e.message}")
-            emptySet<ResolvedArtifact>()
-        }
-
-        artifacts.forEach { artifact ->
-            logger.lifecycle("Pack: ${artifact.moduleVersion.id.group}")
-            logger.lifecycle("Name: ${artifact.moduleVersion.id.name}")
-            logger.lifecycle("Module Group: ${artifact.moduleVersion.id.module.group}")
-            logger.lifecycle("Module Name: ${artifact.moduleVersion.id.module.name}")
-            val id = artifact.moduleVersion.id
-            val notation = "${id.group}:${id.name}:${id.version}"
-            //logger.lifecycle("Automatically adding to api: $notation in ${project.name}")
-            dependencies.add("api", notation)
-        }
-    }
 
     java {
         withSourcesJar()
@@ -252,6 +225,7 @@ project(":yacla-core") {
         isTransitive = false
         isCanBeConsumed = false
         isCanBeResolved = true
+        extendsFrom(configurations.compileOnly.get())
     }
 
     afterEvaluate {
@@ -271,6 +245,7 @@ project(":yacla-yaml") {
         isTransitive = false
         isCanBeConsumed = false
         isCanBeResolved = true
+        extendsFrom(configurations.compileOnly.get())
     }
 
     afterEvaluate {
@@ -293,6 +268,7 @@ project(":yacla-json") {
         isTransitive = false
         isCanBeConsumed = false
         isCanBeResolved = true
+        extendsFrom(configurations.compileOnly.get())
     }
 
     afterEvaluate {
@@ -300,29 +276,6 @@ project(":yacla-json") {
             shadedAPI(libs.jackson)
             shadedAPI(libs.jackson.kotlin)
             compileOnly(project(":yacla-core"))
-        }
-    }
-
-    tasks.named("dokkaGeneratePublicationHtml") {
-        dependsOn(":yacla-core:plainJar")
-    }
-    tasks.named("publishMavenPublicationToMavenRepository") {
-        dependsOn("jar")
-    }
-}
-
-project(":yacla-ext-db") {
-    val shadedAPI = configurations.create("shadedAPI") {
-        isTransitive = false
-        isCanBeConsumed = false
-        isCanBeResolved = true
-    }
-
-    afterEvaluate {
-        dependencies {
-            compileOnly(project(":yacla-core"))
-            api(libs.cask)
-            shadedAPI(libs.kryo)
         }
     }
 

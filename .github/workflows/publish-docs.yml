@@ -17,8 +17,6 @@ jobs:
             dir: yaml
           - name: yacla-json
             dir: json
-          - name: yacla-ext-db
-            dir: ext-db
 
     steps:
       - name: Checkout

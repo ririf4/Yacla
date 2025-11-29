@@ -51,7 +51,7 @@ class DefaultConfigLoader<T : Any>(
         schema: YaclaSchema<T>,
         raw: Map<String, Any?>
     ): Map<String, Any?> {
-        val builder = FieldDefBuilder(clazz.kotlin)
+        val builder = FieldDefBuilder<T>()
         schema.configure(builder)
         val defs = builder.build()
 

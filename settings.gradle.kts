@@ -15,6 +15,3 @@ project(":yaml").name = "yacla-yaml"
 
 include(":json")
 project(":json").name = "yacla-json"
-
-include(":ext-db")
-project(":ext-db").name = "yacla-ext-db"

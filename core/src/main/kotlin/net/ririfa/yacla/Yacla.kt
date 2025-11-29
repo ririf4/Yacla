@@ -188,7 +188,7 @@ object Yacla {
         val kClazz = clazz.kotlin
 
         // 1) Build field definitions from schema
-        val builder = FieldDefBuilder(kClazz)
+        val builder = FieldDefBuilder<T>()
         schema.configure(builder)
         val defs: Map<String, FieldDefinition> = builder.build()
 

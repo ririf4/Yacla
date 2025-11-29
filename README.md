@@ -1,30 +1,24 @@
 # Yacla
 
-**Yet Another Config Loading API** — Yacla is a flexible, annotation-driven, type-safe configuration system for **Kotlin** and **Java**.
+**Yet Another Config Loading API** — Yacla is a flexible, type-safe configuration system for **Kotlin** and **Java**, featuring schema-based config definitions,
+multi-source loaders, validation, and automatic update strategies.
 
-### ✅ Highlights
+✨ Designed for production environments where configuration safety matters.
 
-* Supports **YAML**, **JSON**, and **Database-backed configs**
-* Automatic **version-based update** with **comment preservation** (YAML)
-* **Field-level validation** via annotations
-* **Default value injection** via annotations or registry
-* Works with **Java records** and **Kotlin data classes**
-* Seamless **DB support** via TTL cache + async sync
+---
+
+## Features
+
+* 🧩 **Schema-based configuration DSL** (no reflection setters)
+* 📄 **YAML / JSON** support with automatic **update & merge**
+* 💬 YAML update preserves **user comments**
+* 🔍 **Field-level validation** (required, ranges, custom validators)
+* 🔌 **Custom loaders** for arbitrary types
+* ♻ Works with **Kotlin data classes** and **Java records**
 
 ---
 
 ## Installation
-
-### Core modules:
-
-| Module         | Description                         |
-| -------------- | ----------------------------------- |
-| `yacla-core`   | Core DSL, validation, loader system |
-| `yacla-yaml`   | YAML parser + update strategy       |
-| `yacla-json`   | JSON parser + update strategy       |
-| `yacla-ext-db` | DB-based config loader              |
-
-**Add repository:**
 
 ```kotlin
 repositories {
@@ -32,127 +26,89 @@ repositories {
 }
 ```
 
-**Gradle (Kotlin DSL):**
-
 ```kotlin
 dependencies {
     implementation("net.ririfa:yacla-core:[Version]")
     implementation("net.ririfa:yacla-yaml:[Version]")
     implementation("net.ririfa:yacla-json:[Version]")
-    implementation("net.ririfa:yacla-ext-db:[Version]")
 }
 ```
 
 ### Latest version:
 
-Core:
-![Core Version](https://img.shields.io/badge/dynamic/xml?url=https://repo.ririfa.net/repository/maven-public/net/ririfa/yacla-core/maven-metadata.xml&query=/metadata/versioning/latest&style=plastic&logo=sonatype&label=Nexus)
+Core: ![Core Version](https://img.shields.io/badge/dynamic/xml?url=https://repo.ririfa.net/repository/maven-public/net/ririfa/yacla-core/maven-metadata.xml&query=/metadata/versioning/latest&style=plastic&logo=sonatype&label=Nexus)
 
-YAML:
-![YAML Version](https://img.shields.io/badge/dynamic/xml?url=https://repo.ririfa.net/repository/maven-public/net/ririfa/yacla-yaml/maven-metadata.xml&query=/metadata/versioning/latest&style=plastic&logo=sonatype&label=Nexus)
+YAML: ![YAML Version](https://img.shields.io/badge/dynamic/xml?url=https://repo.ririfa.net/repository/maven-public/net/ririfa/yacla-yaml/maven-metadata.xml&query=/metadata/versioning/latest&style=plastic&logo=sonatype&label=Nexus)
 
-JSON:
-![JSON Version](https://img.shields.io/badge/dynamic/xml?url=https://repo.ririfa.net/repository/maven-public/net/ririfa/yacla-json/maven-metadata.xml&query=/metadata/versioning/latest&style=plastic&logo=sonatype&label=Nexus)
-
-DB:
-![DB Version](https://img.shields.io/badge/dynamic/xml?url=https://repo.ririfa.net/repository/maven-public/net/ririfa/yacla-ext-db/maven-metadata.xml&query=/metadata/versioning/latest&style=plastic&logo=sonatype&label=Nexus)
+JSON: ![JSON Version](https://img.shields.io/badge/dynamic/xml?url=https://repo.ririfa.net/repository/maven-public/net/ririfa/yacla-json/maven-metadata.xml&query=/metadata/versioning/latest&style=plastic&logo=sonatype&label=Nexus)
 
 ---
 
-## Usage Overview
+## Quick Start
 
-### 1. Define Config Class
+### 1. Config Class
 
 ```kotlin
 data class AppConfig(
-    @Required val apiKey: String?,
-    @Default("8080") @Range(min = 1, max = 65535) val port: Int
+    val apiKey: String?,
+    val port: Int
 )
 ```
 
-```java
-public record AppConfig(
-    @NamedRecord("apiKey") @Required String apiKey,
-    @NamedRecord("port") @Default("8080") @Range(min = 1, max = 65535) int port
-) {}
+### 2. Schema Definition
+
+```kotlin
+object AppSchema : YaclaSchema<AppConfig> {
+    override fun configure(def: FieldDefBuilder<AppConfig>) {
+        def.field(AppConfig::apiKey) {
+            required()
+        }
+        def.field(AppConfig::port) {
+            default(8080)
+            range(min = 1, max = 65535)
+        }
+    }
+}
 ```
+
+The schema describes validation, defaults, loaders, and YAML key mapping — not the annotations.
 
 ---
 
-### 2. Load YAML / JSON Config
+## Load YAML / JSON
 
 ```kotlin
-val config = Yacla.loader<AppConfig> {
+val config = Yacla.loader(AppConfig::class, AppSchema) {
     fromResource("/defaults/config.yml")
     toFile(Paths.get("config.yml"))
     parser(YamlParser())
     autoUpdateIfOutdated(true)
-    withLogger(SLF4JYaclaLogger)
-}.load().nullCheck().validate().config
+}.load()
+    .nullCheck()
+    .validate()
+    .config
 ```
 
-YAML preserves root comments. JSON performs structural merge.
+* YAML updates **preserve comments**
+* JSON updates **structurally merge fields**
 
 ---
 
-### 3. Load DB-backed Config
+## Field Options (DSL)
 
-```kotlin
-val config = Yacla.dbLoader<AppConfig> {
-    dataSource(myDataSource)
-    table("configs")
-    key("app-1")
-    ttl(Duration.ofMinutes(5))
-}.load().config
-```
-
-Use `loader.update { ... }`, `save()`, `reload()`, or `withKey("other")`.
-
----
-
-## Annotations
-
-| Annotation               | Description                                 |
-| ------------------------ | ------------------------------------------- |
-| `@Required`              | Field must not be null/blank                |
-| `@Default`               | Injects default if value is null/blank      |
-| `@Range(min,max)`        | Ensures numeric field is within bounds      |
-| `@NamedRecord`           | Maps record param to config key (Java only) |
-| `@CustomLoader`          | Defines custom field loader                 |
-| `@CustomValidateHandler` | Defines custom validator                    |
-| `@IfNullEvenRequired`    | Runs handler if value is null               |
+| Option        | Example                                |
+|---------------|----------------------------------------|
+| Required      | `required()` / `required(soft = true)` |
+| Default value | `default("prod")`                      |
+| Rename key    | `name("server.port")`                  |
+| Range limit   | `range(1, 65535)`                      |
+| Custom loader | `loader(EnumLoader(Mode::class))`      |
+| Null handler  | `ifNull(MyNullHandler::class)`         |
+| Validator     | `validate { check(it >= 0) }`          |
 
 ---
 
-## Auto-Update
-
-* Triggers if `version` in file < resource version
-* Preserves existing user values
-* Adds missing new keys
-
-```yaml
-version: 1.2.0
-```
-
-```kotlin
-loader.updateConfig().reload()
-```
-
----
-
-## Logging
-
-Use your own or built-in SLF4J integration:
-
-```kotlin
-.withLogger(SLF4JYaclaLogger)
-```
-
----
-
-## Extend Yacla
-
-To support a new format (e.g. TOML):
+## Custom Format Support
 
 ```kotlin
 class TomlParser : ConfigParser { ... }
@@ -163,12 +119,20 @@ UpdateStrategyRegistry.register(TomlParser::class.java, TomlUpdateStrategy())
 
 ---
 
+## Logging
+
+```kotlin
+.withLogger(SLF4JYaclaLogger)
+```
+
+---
+
 ## Requirements
 
-* Kotlin: `data class`
-* Java: `record` + `@NamedRecord`
-* No support for reflection-mapped classes (no setters)
-* Uses SnakeYAML v2, Jackson, Kryo internally
+* Kotlin: data classes
+* Java: records
+* No setter-based reflection mapping
+* Internal dependencies: SnakeYAML v2, Jackson, Kryo
 
 ---
 
@@ -180,4 +144,4 @@ MIT
 
 ## Links
 
-* 🔗 [Documentation](https://docs.ririfa.net/)
+📘 Documentation: [https://docs.ririfa.net/](https://docs.ririfa.net/)
