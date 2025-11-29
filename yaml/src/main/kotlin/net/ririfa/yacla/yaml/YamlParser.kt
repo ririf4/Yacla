@@ -1,6 +1,5 @@
 package net.ririfa.yacla.yaml
 
-import net.ririfa.yacla.annotation.NamedRecord
 import net.ririfa.yacla.loader.UpdateStrategyRegistry
 import net.ririfa.yacla.parser.ConfigParser
 import org.snakeyaml.engine.v2.api.Dump

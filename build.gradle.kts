@@ -225,7 +225,7 @@ project(":yacla-core") {
         isTransitive = false
         isCanBeConsumed = false
         isCanBeResolved = true
-        extendsFrom(configurations.compileOnly.get())
+        extendsFrom(configurations.api.get())
     }
 
     afterEvaluate {
@@ -245,7 +245,7 @@ project(":yacla-yaml") {
         isTransitive = false
         isCanBeConsumed = false
         isCanBeResolved = true
-        extendsFrom(configurations.compileOnly.get())
+        extendsFrom(configurations.api.get())
     }
 
     afterEvaluate {
@@ -268,7 +268,7 @@ project(":yacla-json") {
         isTransitive = false
         isCanBeConsumed = false
         isCanBeResolved = true
-        extendsFrom(configurations.compileOnly.get())
+        extendsFrom(configurations.api.get())
     }
 
     afterEvaluate {
