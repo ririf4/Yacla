@@ -13,15 +13,9 @@ plugins {
     `maven-publish`
 }
 
-val coreVer = "2.1.1"
-val yamlVer = "2.0.0"
-val jsonVer = "2.0.0"
-
-dependencies {
-    testImplementation(project(":yacla-core"))
-    testImplementation(project(":yacla-yaml"))
-    testImplementation(project(":yacla-json"))
-}
+val coreVer = "2.1.4"
+val yamlVer = "2.0.2"
+val jsonVer = "2.0.2"
 
 allprojects {
     group = "net.ririfa"
@@ -46,51 +40,38 @@ subprojects {
 
     java {
         withSourcesJar()
-        withJavadocJar()
-
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlin {
-        jvmToolchain {
-            languageVersion.set(JavaLanguageVersion.of(17))
-        }
+        jvmToolchain { languageVersion.set(JavaLanguageVersion.of(17)) }
     }
 
     tasks.withType<KotlinCompile> {
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_17)
-        }
+        compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
     }
 
     tasks.withType<JavaCompile> {
         options.release.set(17)
     }
 
-    tasks.named<Jar>("jar") {
-        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-        archiveClassifier.set("")
-    }
-
+    // existence check before publishing
     tasks.withType<PublishToMavenRepository>().configureEach {
         onlyIf {
             val artifactId = project.name
             val ver = project.version.toString()
-            val repoUrl = if (ver.endsWith("SNAPSHOT")) {
+            val repoUrl = if (ver.endsWith("SNAPSHOT"))
                 "https://repo.ririfa.net/maven2-snap/"
-            } else {
+            else
                 "https://repo.ririfa.net/maven2-rel/"
-            }
-
             val artifactUrl = "${repoUrl}net/ririfa/$artifactId/$ver/$artifactId-$ver.jar"
-            logger.lifecycle("Checking existence of artifact at: $artifactUrl")
 
+            logger.lifecycle("Checking existence of artifact at: $artifactUrl")
             val connection = URI(artifactUrl).toURL().openConnection() as HttpURLConnection
             connection.requestMethod = "HEAD"
             connection.connectTimeout = 3000
             connection.readTimeout = 3000
-
             val exists = connection.responseCode == HttpURLConnection.HTTP_OK
             connection.disconnect()
 
@@ -104,7 +85,44 @@ subprojects {
         }
     }
 
-    tasks.register<Jar>("plainJar") {
+    // shared shadedAPI dependency scope
+    val shadedAPI = configurations.create("shadedAPI") {
+        isTransitive = false
+        isCanBeConsumed = false
+        isCanBeResolved = true
+    }
+
+    // per-module dependencies
+    afterEvaluate {
+        when (name) {
+            "yacla-core" -> dependencies {
+                api(libs.slf4j.api)
+                api(libs.kotlin.reflect)
+            }
+
+            "yacla-yaml" -> dependencies {
+                shadedAPI(libs.yaml)
+                compileOnly(project(":yacla-core"))
+            }
+
+            "yacla-json" -> dependencies {
+                shadedAPI(libs.jackson)
+                shadedAPI(libs.jackson.kotlin)
+                compileOnly(project(":yacla-core"))
+            }
+        }
+
+        // publish shaded dependencies as normal user dependencies
+        shadedAPI.dependencies.forEach { dep ->
+            dependencies.add("api", dep.copy())
+        }
+    }
+
+    tasks.named<Jar>("jar") { enabled = false }
+    tasks.named<ShadowJar>("shadowJar") { enabled = false }
+
+    // plain (main) jar
+    val plainJar = tasks.register<Jar>("plainJar") {
         group = "ririfa"
         description = "Project classes only"
         dependsOn("classes")
@@ -113,54 +131,42 @@ subprojects {
         from(sourceSets.main.get().output)
     }
 
-    tasks.register<ShadowJar>("relocatedFatJar") {
-        dependsOn("classes")
+    // relocated fat jar
+    val fatJar = tasks.register<ShadowJar>("relocatedFatJar") {
         group = "ririfa"
         description = "Creates a relocated fat jar containing shadedAPI dependencies"
         archiveClassifier.set("fat")
-        configurations.add(project.configurations.getByName("shadedAPI"))
+        configurations.add(shadedAPI)
         from(sourceSets.main.get().output)
 
         doFirst {
-            val shaded = project.configurations.getByName("shadedAPI")
             val artifacts = try {
-                shaded.resolvedConfiguration.resolvedArtifacts
-            } catch (e: Exception) {
-                logger.warn("Could not resolve shadedAPI: ${e.message}")
-                emptySet<ResolvedArtifact>()
+                shadedAPI.resolvedConfiguration.resolvedArtifacts
+            } catch (_: Exception) {
+                emptySet()
             }
 
             artifacts.forEach { artifact ->
                 val moduleName = artifact.moduleVersion.id.name.replace("-", "_")
-                val jarFile = artifact.file
-
-                val classPackages = JarFile(jarFile).use { jar ->
+                val classPackages = JarFile(artifact.file).use { jar ->
                     jar.entries().asSequence()
                         .filter { it.name.endsWith(".class") && !it.name.startsWith("META-INF") }
-                        .mapNotNull { entry ->
-                            entry.name
-                                .replace('/', '.')
-                                .removeSuffix(".class")
-                                .substringBeforeLast('.', "")
-                        }
+                        .mapNotNull { e -> e.name.replace('/', '.').removeSuffix(".class").substringBeforeLast('.', "") }
                         .toSet()
                 }
 
-                if (classPackages.any { it.startsWith("net.ririfa") }) {
-                    logger.lifecycle("Skipping relocation for ${artifact.moduleVersion.id} (self package detected)")
+                if (classPackages.any { it.startsWith("net.ririfa") })
                     return@forEach
-                }
 
                 classPackages.forEach { pkg ->
-                    val relocated = "net.ririfa.shaded.$moduleName.${pkg.replace('.', '_')}"
-                    logger.lifecycle("Relocating $pkg → $relocated")
-                    relocate(pkg, relocated)
+                    relocate(pkg, "net.ririfa.shaded.$moduleName.${pkg.replace('.', '_')}")
                 }
             }
         }
     }
 
-    tasks.register<Jar>("dokkaHtmlJar") {
+    // dokka html javadoc jar
+    val dokkaHtmlJar = tasks.register<Jar>("dokkaHtmlJar") {
         group = "dokka"
         description = "Generates HTML documentation using Dokka"
         dependsOn(tasks.named("dokkaGeneratePublicationHtml"))
@@ -175,10 +181,24 @@ subprojects {
                 artifactId = project.name
                 version = project.version.toString()
 
-                artifact(tasks.named<Jar>("plainJar"))
-                artifact(tasks.named<ShadowJar>("relocatedFatJar"))
-                artifact(tasks.named<Jar>("sourcesJar"))
-                artifact(tasks.named<Jar>("dokkaHtmlJar"))
+                // collects API dependencies into POM <dependencies>
+                from(components["java"])
+
+                // main artifact
+                artifact(plainJar) {
+                    classifier = ""
+                    builtBy(plainJar)
+                }
+
+                // extra artifacts
+                artifact(fatJar) {
+                    classifier = "fat"
+                    builtBy(fatJar)
+                }
+                artifact(dokkaHtmlJar) {
+                    classifier = "javadoc"
+                    builtBy(dokkaHtmlJar)
+                }
 
                 pom {
                     name.set(project.name)
@@ -205,6 +225,7 @@ subprojects {
                 }
             }
         }
+
         repositories {
             maven {
                 val releasesRepoUrl = uri("https://repo.ririfa.net/maven2-rel/")
@@ -218,74 +239,15 @@ subprojects {
             }
         }
     }
-}
 
-project(":yacla-core") {
-    val shadedAPI = configurations.create("shadedAPI") {
-        isTransitive = false
-        isCanBeConsumed = false
-        isCanBeResolved = true
+    tasks.named("generateMetadataFileForMavenPublication") {
+        dependsOn(plainJar)
     }
 
-    configurations.implementation.get().extendsFrom(shadedAPI)
-
-    afterEvaluate {
-        dependencies {
-            api(libs.slf4j.api)
-            api(libs.kotlin.reflect)
+    // inter-module dokka dependency
+    if (name == "yacla-yaml" || name == "yacla-json") {
+        tasks.named("dokkaGeneratePublicationHtml") {
+            dependsOn(":yacla-core:plainJar")
         }
-    }
-
-    tasks.named("publishMavenPublicationToMavenRepository") {
-        dependsOn("jar")
-    }
-}
-
-project(":yacla-yaml") {
-    val shadedAPI = configurations.create("shadedAPI") {
-        isTransitive = false
-        isCanBeConsumed = false
-        isCanBeResolved = true
-    }
-
-    configurations.implementation.get().extendsFrom(shadedAPI)
-
-    afterEvaluate {
-        dependencies {
-            shadedAPI(libs.yaml)
-            compileOnly(project(":yacla-core"))
-        }
-    }
-
-    tasks.named("dokkaGeneratePublicationHtml") {
-        dependsOn(":yacla-core:plainJar")
-    }
-    tasks.named("publishMavenPublicationToMavenRepository") {
-        dependsOn("jar")
-    }
-}
-
-project(":yacla-json") {
-    val shadedAPI = configurations.create("shadedAPI") {
-        isTransitive = false
-        isCanBeConsumed = false
-        isCanBeResolved = true
-    }
-
-    configurations.implementation.get().extendsFrom(shadedAPI)
-
-    afterEvaluate {
-        dependencies {
-            shadedAPI(libs.jackson)
-            shadedAPI(libs.jackson.kotlin)
-            compileOnly(project(":yacla-core"))
-        }
-    }
-
-    tasks.named("dokkaGeneratePublicationHtml") {
-        dependsOn(":yacla-core:plainJar")
-    }
-    tasks.named("publishMavenPublicationToMavenRepository") {
-        dependsOn("jar")
     }
 }

@@ -10,7 +10,6 @@ import net.ririfa.yacla.schema.FieldDefinition
 import net.ririfa.yacla.schema.YaclaSchema
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.reflect.KClass
 import kotlin.reflect.full.primaryConstructor
 
 class DefaultConfigLoader<T : Any>(
@@ -119,11 +118,5 @@ class DefaultConfigLoader<T : Any>(
         }
 
         return ctor.callBy(args)
-    }
-
-    private fun <R : Any> instantiate(kClass: KClass<out R>): R {
-        return kClass.objectInstance
-            ?: kClass.primaryConstructor?.takeIf { it.parameters.isEmpty() }?.call()
-            ?: kClass.constructors.first { it.parameters.isEmpty() }.call()
     }
 }
