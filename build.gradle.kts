@@ -92,6 +92,8 @@ subprojects {
         isCanBeResolved = true
     }
 
+    configurations.api.get().extendsFrom(shadedAPI)
+
     // per-module dependencies
     afterEvaluate {
         when (name) {
@@ -110,11 +112,6 @@ subprojects {
                 shadedAPI(libs.jackson.kotlin)
                 compileOnly(project(":yacla-core"))
             }
-        }
-
-        // publish shaded dependencies as normal user dependencies
-        shadedAPI.dependencies.forEach { dep ->
-            dependencies.add("api", dep.copy())
         }
     }
 
