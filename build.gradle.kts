@@ -140,8 +140,6 @@ subprojects {
                 version = project.version.toString()
 
                 from(components["java"])
-                artifact(tasks.named("shadowJar"))
-                artifact(tasks.named("sourcesJar"))
                 artifact(tasks.named("javadocJar"))
 
                 pom {
