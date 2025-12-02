@@ -1,11 +1,10 @@
 package net.ririfa.yacla.json
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.node.ObjectNode
 import net.ririfa.yacla.loader.UpdateStrategy
 import net.ririfa.yacla.loader.util.UpdateContext
 import net.ririfa.yacla.loader.util.isOlderVersion
+import tools.jackson.databind.ObjectMapper
+import tools.jackson.databind.node.ObjectNode
 
 /**
  * Default [UpdateStrategy] implementation for JSON configuration files.
@@ -72,16 +71,14 @@ class JsonUpdateStrategy : UpdateStrategy {
      * @param overrideNode the JSON object node with user-defined or overriding values
      */
     private fun mergeObjectNode(baseNode: ObjectNode, overrideNode: ObjectNode) {
-        val fieldNames = overrideNode.fieldNames()
-        while (fieldNames.hasNext()) {
-            val fieldName = fieldNames.next()
+        for (fieldName in overrideNode.propertyNames()) {
             val overrideValue = overrideNode.get(fieldName)
             val baseValue = baseNode.get(fieldName)
 
             if (baseValue != null && baseValue.isObject && overrideValue.isObject) {
                 mergeObjectNode(baseValue as ObjectNode, overrideValue as ObjectNode)
             } else {
-                baseNode.set<JsonNode>(fieldName, overrideValue)
+                baseNode.set(fieldName, overrideValue)
             }
         }
     }

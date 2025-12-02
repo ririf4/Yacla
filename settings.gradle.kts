@@ -7,11 +7,8 @@ pluginManagement {
 
 rootProject.name = "Yacla"
 
-include(":core")
+include(":core", ":yaml", ":json")
+
 project(":core").name = "yacla-core"
-
-include(":yaml")
 project(":yaml").name = "yacla-yaml"
-
-include(":json")
 project(":json").name = "yacla-json"

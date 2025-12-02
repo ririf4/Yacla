@@ -1,22 +1,20 @@
 [versions]
 kotlin = "2.2.21"
+shadowJar = "9.2.2"
+dokka = "2.1.0"
 
-yaml = "2.9"
+yaml = "3.0.1"
 slf4j-api = "2.1.0-alpha1"
-jackson = "2.19.0"
-kryo = "5.6.2"
-
-cask = "0.0.1+alpha.3"
+jackson = "3.0.3"
 
 [plugins]
-kotlin={ id="org.jetbrains.kotlin.jvm", version.ref="kotlin" }
+kotlin = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+shadow = { id = "com.gradleup.shadow", version.ref = "shadowJar" }
+dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
 
 [libraries]
-yaml={ module="org.snakeyaml:snakeyaml-engine", version.ref="yaml" }
-jackson={ module="com.fasterxml.jackson.core:jackson-databind", version.ref="jackson" }
-jackson-kotlin={ module="com.fasterxml.jackson.module:jackson-module-kotlin", version.ref="jackson" }
-kryo = { module = "com.esotericsoftware:kryo", version.ref = "kryo" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j-api" }
-cask = { module = "net.ririfa:cask", version.ref = "cask" }
-
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
+yaml = { module = "org.snakeyaml:snakeyaml-engine", version.ref = "yaml" }
+jackson-core = { module = "tools.jackson.core:jackson-databind", version.ref = "jackson" }
+jackson-kotlin = { module = "tools.jackson.module:jackson-module-kotlin", version.ref = "jackson" }

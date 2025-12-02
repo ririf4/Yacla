@@ -1,62 +1,103 @@
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+@file:Suppress("PropertyName")
+
 import org.jetbrains.dokka.gradle.tasks.DokkaGeneratePublicationTask
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.net.HttpURLConnection
 import java.net.URI
-import java.util.jar.JarFile
+
 
 plugins {
     alias(libs.plugins.kotlin)
-    id("org.jetbrains.dokka") version "2.1.0"
-    id("com.gradleup.shadow") version "9.2.2" apply false
+    alias(libs.plugins.shadow)
+    alias(libs.plugins.dokka)
     `maven-publish`
 }
 
-val coreVer = "2.1.4"
-val yamlVer = "2.0.2"
-val jsonVer = "2.0.2"
+val YACLA_CORE = "yacla-core"
+val YACLA_YAML = "yacla-yaml"
+val YACLA_JSON = "yacla-json"
+
+val YACLA_CORE_VERSION = "3.0.0"
+val YACLA_YAML_VERSION = "3.0.0"
+val YACLA_JSON_VERSION = "3.0.0"
 
 allprojects {
     group = "net.ririfa"
-    version = when (name) {
-        "yacla-core" -> coreVer
-        "yacla-yaml" -> yamlVer
-        "yacla-json" -> jsonVer
-        else -> "1.0.0"
-    }
 
     repositories {
         mavenCentral()
-        maven("https://repo.ririfa.net/maven2/")
     }
 }
 
 subprojects {
-    apply(plugin = "kotlin")
-    apply(plugin = "org.jetbrains.dokka")
-    apply(plugin = "maven-publish")
+    apply(plugin = "org.jetbrains.kotlin.jvm")
     apply(plugin = "com.gradleup.shadow")
+    apply(plugin = "maven-publish")
+    apply(plugin = "org.jetbrains.dokka")
 
-    java {
-        withSourcesJar()
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+    when (name) {
+        YACLA_CORE -> {
+            version = YACLA_CORE_VERSION
+            afterEvaluate {
+                dependencies {
+                    implementation(libs.kotlin.reflect)
+                    compileOnly(libs.slf4j.api)
+                }
+            }
+        }
+
+        YACLA_YAML -> {
+            version = YACLA_YAML_VERSION
+            afterEvaluate {
+                dependencies {
+                    implementation(project(":$YACLA_CORE"))
+                    implementation(libs.yaml)
+                }
+            }
+        }
+
+        YACLA_JSON -> {
+            version = YACLA_JSON_VERSION
+            afterEvaluate {
+                dependencies {
+                    implementation(project(":$YACLA_CORE"))
+                    implementation(libs.jackson.core)
+                    implementation(libs.jackson.kotlin)
+                }
+            }
+        }
     }
+
+    java { withSourcesJar() }
 
     kotlin {
-        jvmToolchain { languageVersion.set(JavaLanguageVersion.of(17)) }
+        jvmToolchain {
+            languageVersion.set(JavaLanguageVersion.of(17))
+        }
     }
 
-    tasks.withType<KotlinCompile> {
-        compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
+    tasks.shadowJar {
+        archiveClassifier.set("all")
+
+        relocate("tools.jackson", "net.ririfa.yacla.libs.jackson")
+        relocate("org.snakeyaml", "net.ririfa.yacla.libs.snakeyaml")
+
+        dependencies {
+            exclude(dependency("org.jetbrains.kotlin:.*"))
+            exclude(dependency("org.jetbrains.kotlinx:.*"))
+            exclude(dependency("org.jetbrains:annotations"))
+        }
+
+        exclude("META-INF/*.kotlin_module")
+        exclude("META-INF/services/*kotlin*")
+        exclude("META-INF/*kotlin*")
     }
 
-    tasks.withType<JavaCompile> {
-        options.release.set(17)
-    }
+    tasks.withType<JavaCompile>().configureEach { options.release.set(17) }
 
-    // existence check before publishing
+    tasks.withType<KotlinCompile>().configureEach { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }
+
     tasks.withType<PublishToMavenRepository>().configureEach {
         onlyIf {
             val artifactId = project.name
@@ -85,87 +126,7 @@ subprojects {
         }
     }
 
-    // shared shadedAPI dependency scope
-    val shadedAPI = configurations.create("shadedAPI") {
-        isTransitive = false
-        isCanBeConsumed = false
-        isCanBeResolved = true
-    }
-
-    configurations.api.get().extendsFrom(shadedAPI)
-
-    // per-module dependencies
-    afterEvaluate {
-        when (name) {
-            "yacla-core" -> dependencies {
-                api(libs.slf4j.api)
-                api(libs.kotlin.reflect)
-            }
-
-            "yacla-yaml" -> dependencies {
-                shadedAPI(libs.yaml)
-                compileOnly(project(":yacla-core"))
-            }
-
-            "yacla-json" -> dependencies {
-                shadedAPI(libs.jackson)
-                shadedAPI(libs.jackson.kotlin)
-                compileOnly(project(":yacla-core"))
-            }
-        }
-    }
-
-    tasks.named<Jar>("jar") { enabled = false }
-    tasks.named<ShadowJar>("shadowJar") { enabled = false }
-
-    // plain (main) jar
-    val plainJar = tasks.register<Jar>("plainJar") {
-        group = "ririfa"
-        description = "Project classes only"
-        dependsOn("classes")
-        archiveClassifier.set("")
-        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-        from(sourceSets.main.get().output)
-    }
-
-    // relocated fat jar
-    val fatJar = tasks.register<ShadowJar>("relocatedFatJar") {
-        group = "ririfa"
-        description = "Creates a relocated fat jar containing shadedAPI dependencies"
-        archiveClassifier.set("fat")
-        configurations.add(shadedAPI)
-        from(sourceSets.main.get().output)
-
-        doFirst {
-            val artifacts = try {
-                shadedAPI.resolvedConfiguration.resolvedArtifacts
-            } catch (_: Exception) {
-                emptySet()
-            }
-
-            artifacts.forEach { artifact ->
-                val moduleName = artifact.moduleVersion.id.name.replace("-", "_")
-                val classPackages = JarFile(artifact.file).use { jar ->
-                    jar.entries().asSequence()
-                        .filter { it.name.endsWith(".class") && !it.name.startsWith("META-INF") }
-                        .mapNotNull { e -> e.name.replace('/', '.').removeSuffix(".class").substringBeforeLast('.', "") }
-                        .toSet()
-                }
-
-                if (classPackages.any { it.startsWith("net.ririfa") })
-                    return@forEach
-
-                classPackages.forEach { pkg ->
-                    relocate(pkg, "net.ririfa.shaded.$moduleName.${pkg.replace('.', '_')}")
-                }
-            }
-        }
-    }
-
-    // dokka html javadoc jar
-    val dokkaHtmlJar = tasks.register<Jar>("dokkaHtmlJar") {
-        group = "dokka"
-        description = "Generates HTML documentation using Dokka"
+    tasks.register<Jar>("javadocJar") {
         dependsOn(tasks.named("dokkaGeneratePublicationHtml"))
         from(tasks.named<DokkaGeneratePublicationTask>("dokkaGeneratePublicationHtml").flatMap { it.outputDirectory })
         archiveClassifier.set("javadoc")
@@ -178,28 +139,14 @@ subprojects {
                 artifactId = project.name
                 version = project.version.toString()
 
-                // collects API dependencies into POM <dependencies>
                 from(components["java"])
-
-                // main artifact
-                artifact(plainJar) {
-                    classifier = ""
-                    builtBy(plainJar)
-                }
-
-                // extra artifacts
-                artifact(fatJar) {
-                    classifier = "fat"
-                    builtBy(fatJar)
-                }
-                artifact(dokkaHtmlJar) {
-                    classifier = "javadoc"
-                    builtBy(dokkaHtmlJar)
-                }
+                artifact(tasks.named("shadowJar"))
+                artifact(tasks.named("sourcesJar"))
+                artifact(tasks.named("javadocJar"))
 
                 pom {
                     name.set(project.name)
-                    description.set("")
+                    description.set("Yet Another Config Loading API")
                     url.set("https://github.com/ririf4/Yacla")
                     licenses {
                         license {
@@ -216,7 +163,7 @@ subprojects {
                     }
                     scm {
                         connection.set("scm:git:git://github.com/ririf4/Yacla.git")
-                        developerConnection.set("scm:git:ssh://github.com/ririf4/Yacla.git")
+                        developerConnection.set("scm:git:ssh://git@github.com/ririf4/Yacla.git")
                         url.set("https://github.com/ririf4/Yacla")
                     }
                 }
@@ -234,17 +181,6 @@ subprojects {
                     password = findProperty("nxPW").toString()
                 }
             }
-        }
-    }
-
-    tasks.named("generateMetadataFileForMavenPublication") {
-        dependsOn(plainJar)
-    }
-
-    // inter-module dokka dependency
-    if (name == "yacla-yaml" || name == "yacla-json") {
-        tasks.named("dokkaGeneratePublicationHtml") {
-            dependsOn(":yacla-core:plainJar")
         }
     }
 }
