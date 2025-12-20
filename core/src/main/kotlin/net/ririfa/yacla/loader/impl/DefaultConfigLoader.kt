@@ -54,11 +54,12 @@ class DefaultConfigLoader<T : Any>(
 
         for ((name, def) in defs) {
             val yamlKey = (def.yamlName ?: name).lowercase()
+            val propertyKey = name.lowercase()
             val current = out[yamlKey]
 
             if (current == null || (current is String && current.isBlank())) {
                 if (def.defaultValue !== FieldDefinition.NO_DEFAULT) {
-                    out[yamlKey] = def.defaultValue
+                    out[propertyKey] = def.defaultValue
                     continue
                 }
 
@@ -77,8 +78,10 @@ class DefaultConfigLoader<T : Any>(
                 continue
             }
 
+            var processedValue = current
+
             if (def.loader != null) {
-                out[yamlKey] = def.loader.load(current)
+                processedValue = def.loader.load(current)
             }
 
             if (def.rangeMin != null && def.rangeMax != null && current is Number) {
@@ -91,6 +94,12 @@ class DefaultConfigLoader<T : Any>(
             for (validator in def.validators) {
                 validator(current)
             }
+
+            if (yamlKey != propertyKey) {
+                out.remove(yamlKey)
+            }
+
+            out[propertyKey] = processedValue
         }
 
         return out
