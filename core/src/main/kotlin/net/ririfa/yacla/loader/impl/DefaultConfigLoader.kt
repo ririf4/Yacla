@@ -53,7 +53,7 @@ class DefaultConfigLoader<T : Any>(
         val out = raw.toMutableMap()
 
         for ((name, def) in defs) {
-            val yamlKey = def.yamlName ?: name
+            val yamlKey = (def.yamlName ?: name).lowercase()
             val current = out[yamlKey]
 
             if (current == null || (current is String && current.isBlank())) {
@@ -99,10 +99,14 @@ class DefaultConfigLoader<T : Any>(
     private fun loadFromFile(): T {
         val raw = Files.newInputStream(file).use { parser.parse(it) }
 
+        val caseInsensitiveMap = raw.entries.associate { (k, v) ->
+            k.lowercase() to v
+        }
+
         val processed = if (schema != null) {
-            applySchema(schema, raw)
+            applySchema(schema, caseInsensitiveMap)
         } else {
-            raw
+            caseInsensitiveMap
         }
 
         return constructConfig(clazz, processed)
@@ -114,7 +118,7 @@ class DefaultConfigLoader<T : Any>(
             ?: throw IllegalArgumentException("Config class must have a primary constructor")
 
         val args = ctor.parameters.associateWith { param ->
-            rawMap[param.name]
+            rawMap[param.name?.lowercase()]
         }
 
         return ctor.callBy(args)

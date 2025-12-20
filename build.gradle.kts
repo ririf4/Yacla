@@ -18,8 +18,8 @@ val YACLA_CORE = "yacla-core"
 val YACLA_YAML = "yacla-yaml"
 val YACLA_JSON = "yacla-json"
 
-val YACLA_CORE_VERSION = "3.1.0"
-val YACLA_YAML_VERSION = "3.1.2"
+val YACLA_CORE_VERSION = "3.1.1"
+val YACLA_YAML_VERSION = "3.1.3"
 val YACLA_JSON_VERSION = "3.1.0"
 
 allprojects {

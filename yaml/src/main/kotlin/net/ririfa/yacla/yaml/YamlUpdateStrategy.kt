@@ -80,14 +80,6 @@ class YamlUpdateStrategy : UpdateStrategy {
         val currentMappingNode = currentNode as? MappingNode
             ?: throw IllegalStateException("The current config root must be a mapping node")
 
-        logger?.info("Default node blockComments: ${defaultMappingNode.blockComments}")
-        logger?.info("Default node endComments: ${defaultMappingNode.endComments}")
-        defaultMappingNode.value.forEachIndexed { index, tuple ->
-            logger?.info("Tuple $index key: ${(tuple.keyNode as? ScalarNode)?.value}")
-            logger?.info("  Key blockComments: ${tuple.keyNode.blockComments}")
-            logger?.info("  Value blockComments: ${tuple.valueNode.blockComments}")
-        }
-
         val defaultVersion = defaultMappingNode.value
             .find { (it.keyNode as? ScalarNode)?.value?.uppercase() == "VERSION" }
             ?.valueNode
