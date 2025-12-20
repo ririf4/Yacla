@@ -18,9 +18,9 @@ val YACLA_CORE = "yacla-core"
 val YACLA_YAML = "yacla-yaml"
 val YACLA_JSON = "yacla-json"
 
-val YACLA_CORE_VERSION = "3.0.0"
-val YACLA_YAML_VERSION = "3.0.0"
-val YACLA_JSON_VERSION = "3.0.0"
+val YACLA_CORE_VERSION = "3.1.0"
+val YACLA_YAML_VERSION = "3.1.2"
+val YACLA_JSON_VERSION = "3.1.0"
 
 allprojects {
     group = "net.ririfa"
@@ -51,7 +51,7 @@ subprojects {
             version = YACLA_YAML_VERSION
             afterEvaluate {
                 dependencies {
-                    implementation(project(":$YACLA_CORE"))
+                    compileOnly(project(":$YACLA_CORE"))
                     implementation(libs.yaml)
                 }
             }
@@ -61,7 +61,7 @@ subprojects {
             version = YACLA_JSON_VERSION
             afterEvaluate {
                 dependencies {
-                    implementation(project(":$YACLA_CORE"))
+                    compileOnly(project(":$YACLA_CORE"))
                     implementation(libs.jackson.core)
                     implementation(libs.jackson.kotlin)
                 }

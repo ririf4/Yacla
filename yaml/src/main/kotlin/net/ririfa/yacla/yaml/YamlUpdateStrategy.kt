@@ -6,14 +6,33 @@ import net.ririfa.yacla.loader.util.isOlderVersion
 import org.snakeyaml.engine.v2.api.Dump
 import org.snakeyaml.engine.v2.api.DumpSettings
 import org.snakeyaml.engine.v2.api.LoadSettings
+import org.snakeyaml.engine.v2.api.StreamDataWriter
 import org.snakeyaml.engine.v2.composer.Composer
 import org.snakeyaml.engine.v2.nodes.MappingNode
 import org.snakeyaml.engine.v2.nodes.Node
+import org.snakeyaml.engine.v2.nodes.NodeTuple
 import org.snakeyaml.engine.v2.nodes.ScalarNode
 import org.snakeyaml.engine.v2.parser.ParserImpl
 import org.snakeyaml.engine.v2.scanner.StreamReader
 import java.io.InputStreamReader
+import java.io.StringWriter
 
+/**
+ * Internal helper class to support dumping to String
+ */
+private class StreamToStringWriter : StringWriter(), StreamDataWriter {
+    override fun write(str: String) {
+        super.write(str)
+    }
+
+    override fun write(str: String, off: Int, len: Int) {
+        super.write(str, off, len)
+    }
+
+    override fun flush() {
+        super<StreamDataWriter>.flush()
+    }
+}
 /**
  * Default [UpdateStrategy] implementation for YAML configuration files.
  *
@@ -27,8 +46,12 @@ import java.io.InputStreamReader
  * Typically used internally by the YAML parser module.
  */
 class YamlUpdateStrategy : UpdateStrategy {
-    private val loadSettings = LoadSettings.builder().build()
-    private val dumpSettings = DumpSettings.builder().build()
+    private val loadSettings = LoadSettings.builder()
+        .setParseComments(true)
+        .build()
+    private val dumpSettings = DumpSettings.builder()
+        .setDumpComments(true)
+        .build()
     private val dumper = Dump(dumpSettings)
 
     /**
@@ -57,6 +80,14 @@ class YamlUpdateStrategy : UpdateStrategy {
         val currentMappingNode = currentNode as? MappingNode
             ?: throw IllegalStateException("The current config root must be a mapping node")
 
+        logger?.info("Default node blockComments: ${defaultMappingNode.blockComments}")
+        logger?.info("Default node endComments: ${defaultMappingNode.endComments}")
+        defaultMappingNode.value.forEachIndexed { index, tuple ->
+            logger?.info("Tuple $index key: ${(tuple.keyNode as? ScalarNode)?.value}")
+            logger?.info("  Key blockComments: ${tuple.keyNode.blockComments}")
+            logger?.info("  Value blockComments: ${tuple.valueNode.blockComments}")
+        }
+
         val defaultVersion = defaultMappingNode.value
             .find { (it.keyNode as? ScalarNode)?.value?.uppercase() == "VERSION" }
             ?.valueNode
@@ -77,7 +108,12 @@ class YamlUpdateStrategy : UpdateStrategy {
         logger?.info("Updating config from version $currentVersion to $defaultVersion")
 
         mergeMappingNode(defaultMappingNode, currentMappingNode)
-        val yamlString = dumper.dumpToString(defaultMappingNode)
+
+        // Use dumpNode with StreamToStringWriter
+        val writer = StreamToStringWriter()
+        dumper.dumpNode(defaultMappingNode, writer)
+        val yamlString = writer.toString()
+
         context.targetFile.toFile().writeText(yamlString)
 
         logger?.info("Config updated successfully!")
@@ -117,34 +153,33 @@ class YamlUpdateStrategy : UpdateStrategy {
      * @param overrideNode the YAML mapping node to merge from (usually user config)
      */
     private fun mergeMappingNode(baseNode: MappingNode, overrideNode: MappingNode) {
-        val baseTuples = baseNode.value.toMutableList()
+        val newTuples = baseNode.value.map { baseTuple ->
+            val baseKey = baseTuple.keyNode
+            val baseValue = baseTuple.valueNode
 
-        for (overrideTuple in overrideNode.value) {
-            val overrideKey = overrideTuple.keyNode
-            val overrideValue = overrideTuple.valueNode
+            val keyValue = (baseKey as? ScalarNode)?.value
+            if (keyValue?.uppercase() == "VERSION") {
+                return@map baseTuple
+            }
 
-            val existingTuple = baseTuples.find { sameKey(it.keyNode, overrideKey) }
+            val overrideTuple = overrideNode.value.find { sameKey(it.keyNode, baseKey) }
 
-            if (existingTuple != null) {
-                val existingKey = existingTuple.keyNode
-                val existingValue = existingTuple.valueNode
+            if (overrideTuple != null) {
+                val overrideValue = overrideTuple.valueNode
 
-                transferComments(from = existingKey, to = overrideKey)
-
-                if (existingValue is MappingNode && overrideValue is MappingNode) {
-                    transferComments(from = existingValue, to = overrideValue)
-                    mergeMappingNode(existingValue, overrideValue)
+                if (baseValue is MappingNode && overrideValue is MappingNode) {
+                    mergeMappingNode(baseValue, overrideValue)
+                    baseTuple
                 } else {
-                    val index = baseTuples.indexOf(existingTuple)
-                    baseTuples[index] = overrideTuple
+                    NodeTuple(baseKey, overrideValue)
                 }
             } else {
-                baseTuples.add(overrideTuple)
+                baseTuple
             }
         }
 
         baseNode.value.clear()
-        baseNode.value.addAll(baseTuples)
+        baseNode.value.addAll(newTuples)
     }
 
     /**
