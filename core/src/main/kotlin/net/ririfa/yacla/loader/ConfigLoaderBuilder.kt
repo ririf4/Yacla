@@ -2,7 +2,6 @@ package net.ririfa.yacla.loader
 
 import net.ririfa.yacla.logger.YaclaLogger
 import net.ririfa.yacla.parser.ConfigParser
-import net.ririfa.yacla.schema.YaclaSchema
 import java.nio.file.Path
 
 /**
@@ -14,10 +13,13 @@ import java.nio.file.Path
 interface ConfigLoaderBuilder<T : Any> {
 
     /**
-     * Specifies the path to the resource file bundled with the application.
-     * Used as a fallback or for initial creation.
+     * Specifies the path to the resource file (or directory root for locale resolution)
+     * bundled with the application. Used as a fallback or for initial creation.
      *
-     * @param path Classpath-relative resource path (e.g., "/config.yml").
+     * For locale-based loading, pass a directory root (e.g. `/assets/mymod/config/`)
+     * and chain [pull] to resolve the locale-specific file.
+     *
+     * @param path Classpath-relative resource path (e.g., "/config.yml" or "/config/").
      */
     fun fromResource(path: String): ConfigLoaderBuilder<T>
 
@@ -29,18 +31,23 @@ interface ConfigLoaderBuilder<T : Any> {
     fun toFile(file: Path): ConfigLoaderBuilder<T>
 
     /**
+     * Resolves a locale-specific resource and sets the output path.
+     *
+     * Looks for `{resourceRoot}{locale}.yml` in the classpath, falling back to
+     * `{resourceRoot}en_US.yml`. Requires [fromResource] to be called first with
+     * a directory root path.
+     *
+     * @param locale the locale string, e.g. "ja_JP" or "en_US"
+     * @param file the output path where the config file will be written
+     */
+    fun pull(locale: String, file: Path): ConfigLoaderBuilder<T>
+
+    /**
      * Sets the parser used to read and write the config file.
      *
      * @param parser Implementation of [ConfigParser].
      */
     fun parser(parser: ConfigParser): ConfigLoaderBuilder<T>
-
-    /**
-     * Sets the schema used for validating and mapping the config data.
-     *
-     * @param schema Implementation of [YaclaSchema] for type [T].
-     */
-    fun schema(schema: YaclaSchema<T>): ConfigLoaderBuilder<T>
 
     /**
      * Sets the logger used for informational and error messages.

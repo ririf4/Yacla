@@ -5,10 +5,6 @@ import net.ririfa.yacla.loader.ConfigLoader
 import net.ririfa.yacla.loader.ConfigLoaderBuilder
 import net.ririfa.yacla.loader.JLoaderScope
 import net.ririfa.yacla.loader.impl.DefaultConfigLoaderBuilder
-import net.ririfa.yacla.schema.FieldDefBuilder
-import net.ririfa.yacla.schema.FieldDefinition
-import net.ririfa.yacla.schema.YaclaSchema
-import kotlin.reflect.KParameter
 import kotlin.reflect.full.primaryConstructor
 
 /**
@@ -16,6 +12,8 @@ import kotlin.reflect.full.primaryConstructor
  *
  * Entry point to create and configure loaders that map configuration files
  * into Kotlin or Java objects, with support for validation, logging, and auto-update.
+ *
+ * Fields are mapped by annotation and Kotlin default values — no schema required.
  */
 object Yacla {
 
@@ -27,9 +25,9 @@ object Yacla {
      * val loader: ConfigLoader<AppConfig> = Yacla.loader<AppConfig>()
      *     .fromResource("/defaults/config.yml")
      *     .toFile(Paths.get("config.yml"))
-     *     .parser(SnakeYamlParser())
+     *     .parser(YamlParser())
      *     .autoUpdateIfOutdated(true)
-     *     .withLogger(ConsoleLogger())
+     *     .withLogger(SLF4JYaclaLogger)
      *     .load()
      *
      * val config: AppConfig = loader.config
@@ -48,12 +46,11 @@ object Yacla {
      * ConfigLoader<AppConfig> loader = Yacla.loader(AppConfig.class)
      *     .fromResource("/defaults/config.yml")
      *     .toFile(Paths.get("config.yml"))
-     *     .parser(new SnakeYamlParser())
+     *     .parser(new YamlParser())
      *     .autoUpdateIfOutdated(true)
-     *     .withLogger(new ConsoleLogger())
      *     .load();
      *
-     * AppConfig config = loader.get();
+     * AppConfig config = loader.getConfig();
      * ```
      *
      * @param clazz the target class of the configuration data.
@@ -70,11 +67,9 @@ object Yacla {
      * val loader = Yacla.loader<AppConfig> {
      *     fromResource("/defaults/config.yml")
      *     toFile(Paths.get("config.yml"))
-     *     parser(SnakeYamlParser())
+     *     parser(YamlParser())
      *     autoUpdateIfOutdated(true)
-     *     withLogger(ConsoleLogger())
      * }.load()
-     *  //or, you can use the method chain
      *
      * val config: AppConfig = loader.config
      * ```
@@ -91,8 +86,6 @@ object Yacla {
 
     /**
      * Creates a DSL scope that applies the provided default settings to all loaders defined inside.
-     *
-     * This version is Kotlin-idiomatic, allowing `loader<ConfigClass> { ... }` syntax with receiver scoping.
      *
      * Example (Kotlin DSL):
      * ```kotlin
@@ -118,8 +111,6 @@ object Yacla {
 
     /**
      * Creates a functional scope for defining multiple loaders with common defaults, for use in Java.
-     *
-     * This method enables Java-friendly loader definition using lambdas or anonymous classes.
      *
      * Example (Java):
      * ```java
@@ -169,47 +160,28 @@ object Yacla {
     }
 
     /**
-     * Creates a new config instance using only defaults.
+     * Creates a new config instance using only Kotlin primary constructor default values.
      *
-     * - If a field has a default in the given [schema], that value is used.
-     * - Otherwise, the data class primary constructor's default parameter is used (if any).
+     * All parameters must have default values in the primary constructor, otherwise
+     * an exception will be thrown for missing non-nullable parameters.
      *
      * No file I/O or parsing is performed.
+     *
+     * Example:
+     * ```kotlin
+     * val defaults = Yacla.fillByDefault<AppConfig>()
+     * ```
      */
     @JvmStatic
-    inline fun <reified T : Any> fillByDefault(schema: YaclaSchema<T>): T =
-        fillByDefault(T::class.java, schema)
+    inline fun <reified T : Any> fillByDefault(): T = fillByDefault(T::class.java)
 
     /**
      * Java-friendly overload of [fillByDefault].
      */
     @JvmStatic
-    fun <T : Any> fillByDefault(clazz: Class<T>, schema: YaclaSchema<T>): T {
-        val kClazz = clazz.kotlin
-
-        // 1) Build field definitions from schema
-        val builder = FieldDefBuilder<T>()
-        schema.configure(builder)
-        val defs: Map<String, FieldDefinition> = builder.build()
-
-        // 2) Data class primary constructor path
-        val ctor = kClazz.primaryConstructor
+    fun <T : Any> fillByDefault(clazz: Class<T>): T {
+        val ctor = clazz.kotlin.primaryConstructor
             ?: error("Config class ${clazz.simpleName} must have a primary constructor for fillByDefault()")
-
-        val args = mutableMapOf<KParameter, Any?>()
-
-        ctor.parameters.forEach { p ->
-            val name = p.name ?: return@forEach
-            val def = defs[name]
-
-            // If schema has a default, use it.
-            if (def != null && def.defaultValue !== FieldDefinition.NO_DEFAULT) {
-                args[p] = def.defaultValue
-            }
-            // else: do not put anything -> Kotlin will fall back to the
-            // primary constructor's default argument, if present.
-        }
-
-        return ctor.callBy(args)
+        return ctor.callBy(emptyMap())
     }
 }

@@ -1,12 +1,10 @@
 package net.ririfa.yacla.loader.impl
 
 import net.ririfa.yacla.LoaderSettings
-import net.ririfa.yacla.Yacla.loader
 import net.ririfa.yacla.loader.ConfigLoader
 import net.ririfa.yacla.loader.ConfigLoaderBuilder
 import net.ririfa.yacla.logger.YaclaLogger
 import net.ririfa.yacla.parser.ConfigParser
-import net.ririfa.yacla.schema.YaclaSchema
 import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.Path
@@ -30,7 +28,6 @@ class DefaultConfigLoaderBuilder<T : Any>(
     private var resourcePath: String? = null
     private var targetFile: Path? = null
     private var parser: ConfigParser? = null
-    private var schema: YaclaSchema<T>? = null
     private var logger: YaclaLogger? = null
     private var autoUpdate = false
 
@@ -42,12 +39,48 @@ class DefaultConfigLoaderBuilder<T : Any>(
         this.targetFile = file
     }
 
-    override fun parser(parser: ConfigParser): ConfigLoaderBuilder<T> = apply {
-        this.parser = parser
+    /**
+     * Resolves a locale-specific resource file and sets the output path.
+     *
+     * Given a resource root directory (set via [fromResource]), this method tries:
+     * 1. `{root}{locale}.yml`
+     * 2. `{root}en_US.yml` (fallback)
+     *
+     * If neither is found, an [IllegalStateException] is thrown.
+     * The resolved resource path and the given [file] are stored for use during [load].
+     *
+     * Example:
+     * ```kotlin
+     * Yacla.loader<MyConfig>()
+     *     .fromResource("/assets/mymod/config/")
+     *     .pull("ja_JP", configFile)
+     *     .parser(YamlParser())
+     *     .load()
+     * ```
+     *
+     * @param locale the locale string (e.g. "ja_JP", "en_US")
+     * @param file the output path where the resolved resource will be copied
+     */
+    override fun pull(locale: String, file: Path): ConfigLoaderBuilder<T> = apply {
+        this.targetFile = file
+        val root = resourcePath
+            ?: throw IllegalStateException("fromResource() must be called before pull()")
+        val normalizedRoot = if (root.endsWith("/")) root else "$root/"
+
+        val localePath = "$normalizedRoot$locale.yml"
+        val fallbackPath = "${normalizedRoot}en_US.yml"
+
+        this.resourcePath = when {
+            javaClass.getResourceAsStream(localePath) != null -> localePath
+            javaClass.getResourceAsStream(fallbackPath) != null -> fallbackPath
+            else -> throw IllegalStateException(
+                "Neither '$localePath' nor '$fallbackPath' found in classpath"
+            )
+        }
     }
 
-    override fun schema(schema: YaclaSchema<T>): ConfigLoaderBuilder<T> = apply {
-        this.schema = schema
+    override fun parser(parser: ConfigParser): ConfigLoaderBuilder<T> = apply {
+        this.parser = parser
     }
 
     override fun withLogger(logger: YaclaLogger): ConfigLoaderBuilder<T> = apply {
@@ -84,7 +117,6 @@ class DefaultConfigLoaderBuilder<T : Any>(
         return DefaultConfigLoader(
             clazz = clazz,
             parser = parser!!,
-            schema = schema,
             file = targetFile!!,
             logger = logger,
             resourcePath = resourcePath!!
