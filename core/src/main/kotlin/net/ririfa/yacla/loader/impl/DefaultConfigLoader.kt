@@ -1,11 +1,6 @@
 package net.ririfa.yacla.loader.impl
 
-import net.ririfa.yacla.annotation.BlankToNull
-import net.ririfa.yacla.annotation.EnumList
-import net.ririfa.yacla.annotation.EnumSet
-import net.ririfa.yacla.annotation.Loader
-import net.ririfa.yacla.annotation.SetOf
-import net.ririfa.yacla.annotation.Warn
+import net.ririfa.yacla.annotation.*
 import net.ririfa.yacla.exception.YaclaConfigException
 import net.ririfa.yacla.loader.ConfigLoader
 import net.ririfa.yacla.loader.FieldLoader
@@ -65,7 +60,7 @@ class DefaultConfigLoader<T : Any>(
 
         for (param in ctor.parameters) {
             val paramName = param.name ?: continue
-            val resolvedKey = resolveKey(paramName, rawMap)
+            val resolvedKey = resolveKey(param, paramName, rawMap)
             val rawValue = resolvedKey?.let { rawMap[it] }
             val processedValue = processParam(param, rawValue)
 
@@ -101,6 +96,14 @@ class DefaultConfigLoader<T : Any>(
         // 3. @BlankToNull — blank String → null
         if (annotations.any { it is BlankToNull } && value is String && value.isBlank()) {
             value = null
+        }
+
+        if (annotations.any { it is NotBlank } && value is String && value.isBlank()) {
+            throw YaclaConfigException("Field '${param.name}' must not be blank in config file: $file")
+        }
+
+        annotations.filterIsInstance<Range>().firstOrNull()?.let { range ->
+            validateRange(param, value, range)
         }
 
         // 4. @SetOf — Collection → Set (empty → null)
@@ -187,12 +190,36 @@ class DefaultConfigLoader<T : Any>(
         }
     }
 
-    private fun resolveKey(paramName: String, map: Map<String, Any?>): String? {
+    private fun validateRange(param: KParameter, value: Any?, range: Range) {
+        if (value == null) return
+
+        val numericValue = when (value) {
+            is Byte -> value.toDouble()
+            is Short -> value.toDouble()
+            is Int -> value.toDouble()
+            is Long -> value.toDouble()
+            is Float -> value.toDouble()
+            is Double -> value
+            else -> throw YaclaConfigException(
+                "Field '${param.name}' uses @Range but is not numeric in config file: $file"
+            )
+        }
+
+        if (numericValue < range.min.toDouble() || numericValue > range.max.toDouble()) {
+            throw YaclaConfigException(
+                "Field '${param.name}' is out of range [${range.min}, ${range.max}] in config file: $file"
+            )
+        }
+    }
+
+    private fun resolveKey(param: KParameter, paramName: String, map: Map<String, Any?>): String? {
+        val explicitKey = param.annotations.filterIsInstance<Key>().firstOrNull()?.value?.lowercase()
         val candidates = linkedSetOf(
+            explicitKey,
             paramName.lowercase(),
             camelToSnake(paramName),
             camelToKebab(paramName)
-        )
+        ).filterNotNull()
         return candidates.firstOrNull { map.containsKey(it) }
     }
 

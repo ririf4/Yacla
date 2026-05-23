@@ -18,9 +18,9 @@ val YACLA_CORE = "yacla-core"
 val YACLA_YAML = "yacla-yaml"
 val YACLA_JSON = "yacla-json"
 
-val YACLA_CORE_VERSION = "4.0.0"
-val YACLA_YAML_VERSION = "3.1.3"
-val YACLA_JSON_VERSION = "3.1.0"
+val YACLA_CORE_VERSION = "4.1.0"
+val YACLA_YAML_VERSION = "4.1.0"
+val YACLA_JSON_VERSION = "4.1.0"
 
 allprojects {
     group = "net.ririfa"
@@ -31,10 +31,10 @@ allprojects {
 }
 
 subprojects {
-    apply(plugin = "org.jetbrains.kotlin.jvm")
-    apply(plugin = "com.gradleup.shadow")
-    apply(plugin = "maven-publish")
-    apply(plugin = "org.jetbrains.dokka")
+    plugins.apply("org.jetbrains.kotlin.jvm")
+    plugins.apply("com.gradleup.shadow")
+    plugins.apply("maven-publish")
+    plugins.apply("org.jetbrains.dokka")
 
     when (name) {
         YACLA_CORE -> {

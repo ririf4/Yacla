@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew projects)",
+      "Bash(./gradlew :yacla-core:compileKotlin)",
+      "Bash(./gradlew :yacla-yaml:compileKotlin :yacla-json:compileKotlin)",
+      "Bash(./gradlew build -x dokkaGeneratePublicationHtml)"
+    ]
+  }
+}

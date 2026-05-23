@@ -39,6 +39,13 @@ object Yacla {
     inline fun <reified T : Any> loader(): ConfigLoaderBuilder<T> = loader(T::class.java)
 
     /**
+     * Creates and configures a loader in a Kotlin DSL block.
+     */
+    inline fun <reified T : Any> loader(
+        noinline builder: ConfigLoaderBuilder<T>.() -> Unit
+    ): ConfigLoaderBuilder<T> = loader(T::class.java, builder)
+
+    /**
      * Creates a configuration loader for the specified class.
      *
      * Example (Java):
