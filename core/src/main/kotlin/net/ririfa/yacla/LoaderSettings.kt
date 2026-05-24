@@ -12,9 +12,11 @@ import net.ririfa.yacla.parser.ConfigParser
  * @property parser the [ConfigParser] used for loading and writing config files
  * @property logger optional [YaclaLogger] to receive info/warning/error output
  * @property autoUpdate if true, triggers automatic config update via [net.ririfa.yacla.loader.UpdateStrategy]
+ * @property languageSettings shared language defaults for localized resource output
  */
-class LoaderSettings(
+class LoaderSettings @JvmOverloads constructor(
     val parser: ConfigParser,
     val logger: YaclaLogger? = null,
-    val autoUpdate: Boolean = false
+    val autoUpdate: Boolean = false,
+    val languageSettings: LanguageSettings = LanguageSettings()
 )

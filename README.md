@@ -15,6 +15,7 @@ Yacla maps YAML or JSON files into Kotlin data classes using primary constructor
 * YAML update support with comment-aware parsing
 * Field annotations for key mapping, validation, conversion, warnings, and custom loaders
 * Shared loader defaults for multi-config applications
+* Localized default config output using the system language or an explicit fallback
 
 ---
 
@@ -126,6 +127,76 @@ val loader = Yacla.loader<AppConfig>()
     .parser(YamlParser())
     .autoUpdateIfOutdated(true)
     .load()
+```
+
+---
+
+## Localized Config Output
+
+Place localized defaults under a resource directory. Yacla accepts both language-only files and region-specific files, for example:
+
+```text
+src/main/resources/defaults/lang/en.yml
+src/main/resources/defaults/lang/ja.yml
+src/main/resources/defaults/lang/ja_JP.yml
+```
+
+For a single output file, `pull(file)` selects the current JVM language, falling back to `en` by default, and copies it to the given file.
+
+```kotlin
+import net.ririfa.yacla.Yacla
+import net.ririfa.yacla.yaml.YamlParser
+import java.nio.file.Paths
+
+val loader = Yacla.loader<AppConfig>()
+    .fromResource("/defaults/lang/")
+    .parser(YamlParser())
+    .pull(Paths.get("config.yml"))
+    .load()
+```
+
+You can override the selected language and fallback language explicitly.
+
+```kotlin
+val loader = Yacla.loader<AppConfig>()
+    .fromResource("/defaults/lang/")
+    .parser(YamlParser())
+    .language("ja_JP")
+    .defaultLanguage("en")
+    .pull(Paths.get("config.yml"))
+    .load()
+```
+
+For multiple output files, Yacla writes one file per language using the base file name, such as `config_en.yml` and `config_ja.yml`. The loaded config still follows the selected language, which defaults to the PC/JVM language.
+
+```kotlin
+import net.ririfa.yacla.LanguageOutputMode
+
+val loader = Yacla.loader<AppConfig>()
+    .fromResource("/defaults/lang/")
+    .parser(YamlParser())
+    .languageOutputMode(LanguageOutputMode.MULTIPLE_FILES)
+    .outputLanguages("en", "ja")
+    .pull(Paths.get("config.yml"))
+    .load()
+```
+
+Shared defaults can also carry the language behavior.
+
+```kotlin
+import net.ririfa.yacla.LanguageOutputMode
+import net.ririfa.yacla.LanguageSettings
+import net.ririfa.yacla.LoaderSettings
+
+val settings = LoaderSettings(
+    parser = YamlParser(),
+    autoUpdate = true,
+    languageSettings = LanguageSettings(
+        defaultLanguage = "en",
+        outputMode = LanguageOutputMode.MULTIPLE_FILES,
+        outputLanguages = setOf("en", "ja")
+    )
+)
 ```
 
 ---

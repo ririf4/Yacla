@@ -18,7 +18,7 @@ val YACLA_CORE = "yacla-core"
 val YACLA_YAML = "yacla-yaml"
 val YACLA_JSON = "yacla-json"
 
-val YACLA_CORE_VERSION = "4.1.0"
+val YACLA_CORE_VERSION = "4.1.1"
 val YACLA_YAML_VERSION = "4.1.0"
 val YACLA_JSON_VERSION = "4.1.0"
 
